@@ -1,8 +1,19 @@
 import pymel.core as pm
-import pymel.all as pa
 
+imgOp = 0
+imgDep = 0
+curCam = ''
+ImgPln = []
+fileNm = ''
+pLoc = ''
 #create image plane and set up some attrs
 def createImgPln():
+    global imgOp
+    global imgDep
+    global curCam
+    global ImgPln
+    global fileNm
+    global pLoc
     #image plane opacty and offset from camera
     imgOp = 0.3
     imgDep = 10
@@ -18,7 +29,7 @@ def createImgPln():
     
     #aligh to the camera
     #create locator to be the parent and then create parent constraint
-    pLoc = pm.spaceLocator()
+    pLoc = pm.spaceLocator(name='ImagePlane_Parent_Loc')
     pm.parent(ImgPln[0],pLoc)
     pm.parentConstraint(curCam,pLoc)
 
@@ -37,6 +48,10 @@ def camLockTgl():
     else:
         pm.setAttr(curCam+'.t',lock=True)
         pm.setAttr(curCam+'.r',lock=True)
+
+#Select image plane
+def selImgPln():
+    pm.select(ImgPln[0],r=True)
 
 #Toggle lock image plane's translate rotate and scale
 def imgPlnLockTgl():
