@@ -213,7 +213,7 @@ def transImgPlnDp():
         if cfmAnswer == 'Yes':
             createImgPln()
     elif len(isImgPln) >= 1:
-        camDp = pm.getAttr(curCam+'.translateZ')
+        camDp = -pm.getAttr(curCam+'.translateZ')
         imgPlnScale = pm.getAttr(ImgPln[0]+'.s')
         if pm.getAttr(ImgPln[0]+'.translateZ') == (camDp)*0.01:
             pm.setAttr(ImgPln[0]+'.translateX',0)
