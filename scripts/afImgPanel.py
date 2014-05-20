@@ -1,27 +1,56 @@
 import pymel.core as pm
 import pymel.all as pa
 
-imgOp = 0.3
-imgDep = 10
-
-#get current camera
-curCam = pm.modelPanel(pm.getPanel(wf=True),q=True,cam=True)
-#select image and creat imagePlane and setup
-fileNm = pm.fileDialog2(ds=0,fm=1,cap='open',okc='Select Image')
-ImgPln = pm.imagePlane(fn=fileNm[0],lookThrough=curCam,maintainRatio=1)
-pm.setAttr(ImgPln[1]+'.displayOnlyIfCurrent',True)
-pm.setAttr(ImgPln[0]+'.translateZ',-pm.getAttr(curCam+'.translateZ')/3+-imgDep)
-pm.setAttr(ImgPln[1]+'.alphaGain',imgOp)
-pm.setAttr(ImgPln[1]+'.textureFilter',1)
-
-#aligh to the camera
-#create locator to be the parent and then create parent constraint
-pLoc = pm.spaceLocator()
-pm.parent(ImgPln[0],pLoc)
-pm.parentConstraint(curCam,pLoc)
+#create image plane and set up some attrs
+def createImgPln():
+    #image plane opacty and offset from camera
+    imgOp = 0.3
+    imgDep = 10
+    #get current camera
+    curCam = pm.modelPanel(pm.getPanel(wf=True),q=True,cam=True)
+    #select image and creat imagePlane and setup
+    fileNm = pm.fileDialog2(ds=0,fm=1,cap='open',okc='Select Image')
+    ImgPln = pm.imagePlane(fn=fileNm[0],lookThrough=curCam,maintainRatio=1)
+    pm.setAttr(ImgPln[1]+'.displayOnlyIfCurrent',True)
+    pm.setAttr(ImgPln[0]+'.translateZ',-pm.getAttr(curCam+'.translateZ')/3+-imgDep)
+    pm.setAttr(ImgPln[1]+'.alphaGain',imgOp)
+    pm.setAttr(ImgPln[1]+'.textureFilter',1)
+    
+    #aligh to the camera
+    #create locator to be the parent and then create parent constraint
+    pLoc = pm.spaceLocator()
+    pm.parent(ImgPln[0],pLoc)
+    pm.parentConstraint(curCam,pLoc)
 
 #Toggle image plane visibility
-if(pm.getAttr(ImgPln[1]+'.visibility')):
-    pm.setAttr(ImgPln[1]+'.visibility',0)
-else:
-    pm.setAttr(ImgPln[1]+'.visibility',1)
+def imgPlnVisTgl():
+    if(pm.getAttr(ImgPln[1]+'.visibility')):
+        pm.setAttr(ImgPln[1]+'.visibility',0)
+    else:
+        pm.setAttr(ImgPln[1]+'.visibility',1)
+
+#Toggle lock current camera
+def camLockTgl():
+    if(pm.getAttr(curCam+'.t',lock=True)):
+        pm.setAttr(curCam+'.t',lock=False)
+        pm.setAttr(curCam+'.r',lock=False)
+    else:
+        pm.setAttr(curCam+'.t',lock=True)
+        pm.setAttr(curCam+'.r',lock=True)
+
+#Toggle lock image plane's translate rotate and scale
+def imgPlnLockTgl():
+    if(pm.getAttr(ImgPln[0]+'.t',lock=True)):
+        pm.setAttr(ImgPln[0]+'.t',lock=False)
+        pm.setAttr(ImgPln[0]+'.r',lock=False)
+        pm.setAttr(ImgPln[0]+'.s',lock=False)
+        pm.toggle(ImgPln[0],state=False,template=True)
+    else:
+        pm.setAttr(ImgPln[0]+'.t',lock=True)
+        pm.setAttr(ImgPln[0]+'.r',lock=True)
+        pm.setAttr(ImgPln[0]+'.s',lock=True)
+        pm.toggle(ImgPln[0],state=True,template=True)
+
+#remove image plane and cleanup
+def cleanupImgPln():
+    pm.delete(pLoc)
