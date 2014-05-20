@@ -1,12 +1,16 @@
 import pymel.core as pm
 
-imgOp = 0
+#variables
+imgOp = 1
 imgDep = 0
 curCam = ''
 ImgPln = []
 fileNm = ''
 pLoc = ''
 bmCam = ''
+
+
+
 #create image plane and set up some attrs
 def createImgPln():
     global imgOp
@@ -16,7 +20,7 @@ def createImgPln():
     global fileNm
     global pLoc
     #image plane opacty and offset from camera
-    imgOp = 0.3
+    imgOp = 1
     imgDep = 10
     #get current camera
     curCam = pm.modelPanel(pm.getPanel(wf=True),q=True,cam=True)
@@ -30,9 +34,14 @@ def createImgPln():
     
     #aligh to the camera
     #create locator to be the parent and then create parent constraint
+    #setAttr "ImagePlane_Parent_LocShape.template" 1;
+    #setAttr "ImagePlane_Parent_Loc_parentConstraint1.template" 1;
+    #setAttr "imagePlane1.template" 1;
     pLoc = pm.spaceLocator(name='ImagePlane_Parent_Loc')
     pm.parent(ImgPln[0],pLoc)
-    pm.parentConstraint(curCam,pLoc)
+    LocCons = pm.parentConstraint(curCam,pLoc)
+    pm.setAttr(pLoc+'Shape.template',1)
+    pm.setAttr(LocCons+'.template',1)
 
 #Toggle image plane visibility
 def imgPlnVisTgl():
@@ -100,13 +109,49 @@ def restoreImgBM():
 
 
 #add switch to the Image Plane transparency
+def imgPlnOpSw():
+    if pm.getAttr(ImgPln[1]+'.alphaGain') == 1:
+        pm.setAttr(ImgPln[1]+'.alphaGain', 0.7)
+    elif pm.getAttr(ImgPln[1]+'.alphaGain') == 0.7:
+        pm.setAttr(ImgPln[1]+'.alphaGain', 0.5)
+    elif pm.getAttr(ImgPln[1]+'.alphaGain') == 0.5:
+        pm.setAttr(ImgPln[1]+'.alphaGain', 0.3)
+    elif pm.getAttr(ImgPln[1]+'.alphaGain') == 0.3:
+        pm.setAttr(ImgPln[1]+'.alphaGain', 0.08)
+    elif pm.getAttr(ImgPln[1]+'.alphaGain') == 0.08:
+        pm.setAttr(ImgPln[1]+'.alphaGain', 1)
 
 #Imgae Plane depth trans
-
+def transImgPlnDp():
+    camDp = pm.getAttr(curCam+'.translateZ')
+    imgPlnScale = pm.getAttr(ImgPln[0]+'.s')
+    if pm.getAttr(ImgPln[0]+'.translateZ') == -(camDp)*0.01:
+        pm.setAttr(ImgPln[0]+'.translateX',0)
+        pm.setAttr(ImgPln[0]+'.translateY',0)
+        pm.setAttr(ImgPln[0]+'.translateZ',-(camDp)*0.1)
+        pm.setAttr(ImgPln[0]+'.s',1,1,1)
+    elif pm.getAttr(ImgPln[0]+'.translateZ') == -(camDp)*0.1:
+        pm.setAttr(ImgPln[0]+'.translateX',0)
+        pm.setAttr(ImgPln[0]+'.translateY',0)
+        pm.setAttr(ImgPln[0]+'.translateZ',-(camDp)*0.01)
+        pm.setAttr(ImgPln[0]+'.s',0.2,0.2,0.2)
+    else:
+        pm.setAttr(ImgPln[0]+'.translateX',0)
+        pm.setAttr(ImgPln[0]+'.translateY',0)
+        pm.setAttr(ImgPln[0]+'.translateZ',-(camDp)*0.1)
+        pm.setAttr(ImgPln[0]+'.s',1,1,1)
+    
 #HUD
 
 #change image file
 
 #More Image Planes to the camera
+
+
+
+
+
+
+
 
 
