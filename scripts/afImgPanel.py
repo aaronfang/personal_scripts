@@ -60,22 +60,6 @@ def selImgPln():
         pm.setAttr(ImgPln[0]+'.s',lock=False)
         pm.toggle(ImgPln[0],state=False,template=True)
 
-'''
-#Toggle lock image plane's translate rotate and scale
-def imgPlnLockTgl():
-    if(pm.getAttr(ImgPln[0]+'.t',lock=True)):
-        pm.setAttr(ImgPln[0]+'.t',lock=False)
-        pm.setAttr(ImgPln[0]+'.r',lock=False)
-        pm.setAttr(ImgPln[0]+'.s',lock=False)
-        pm.toggle(ImgPln[0],state=False,template=True)
-        pm.select(ImgPln,r=True)
-    else:
-        pm.setAttr(ImgPln[0]+'.t',lock=True)
-        pm.setAttr(ImgPln[0]+'.r',lock=True)
-        pm.setAttr(ImgPln[0]+'.s',lock=True)
-        pm.toggle(ImgPln[0],state=True,template=True)
-        pm.select(ImgPln,d=True)
-'''
 #Lock the image plane
 def imgPlnLock():
     if(pm.getAttr(ImgPln[0]+'.t',lock=False)):
@@ -87,7 +71,14 @@ def imgPlnLock():
 
 #remove image plane and cleanup
 def cleanupImgPln():
-    pm.delete(pLoc)
+    allTransNd = pm.ls(type='transform',fl=True)
+    for trans in allTransNd:
+        if trans == 'ImagePlane_Parent_Loc':
+            pm.delete(pLoc)
+    #unlock the camera
+    if(pm.getAttr(curCam+'.t',lock=True)):
+        pm.setAttr(curCam+'.t',lock=False)
+        pm.setAttr(curCam+'.r',lock=False)
 
 #bookmark camera position
 def addImgBookMark():
