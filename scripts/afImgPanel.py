@@ -6,6 +6,7 @@ curCam = ''
 ImgPln = []
 fileNm = ''
 pLoc = ''
+bmCam = ''
 #create image plane and set up some attrs
 def createImgPln():
     global imgOp
@@ -69,3 +70,28 @@ def imgPlnLockTgl():
 #remove image plane and cleanup
 def cleanupImgPln():
     pm.delete(pLoc)
+
+
+
+#bookmark camera position
+def addImgBookMark():
+    global bmCam
+    bmCam = pm.modelPanel(pm.getPanel(wf=True),q=True,cam=True)
+    #remove current bookmark
+    cmvList = pm.ls(type='cameraView')
+    if len(cmvList)!=0:
+        for cmv in cmvList:
+            if cmv == 'imageView_bookmark':
+                pm.cameraView(cmv,c=bmCam,e=True,rb=True)
+                pm.delete(cmv)
+    #add bookmark
+    addBM = pm.cameraView(c=bmCam,ab=True,n='imageView_bookmark')
+
+#Restore from bookmark
+def restoreImgBM():
+    pm.cameraView('imageView_bookmark',e=True,c=bmCam,setCamera=True)
+
+
+
+
+
