@@ -99,6 +99,12 @@ def restoreImgBM():
     pm.cameraView('imageView_bookmark',e=True,c=bmCam,setCamera=True)
 
 
+#add switch to the Image Plane transparency
 
+#Imgae Plane depth trans
+
+#HUD
+
+#More Image Planes to the camera
 
 
