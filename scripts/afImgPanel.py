@@ -49,11 +49,18 @@ def camLockTgl():
     else:
         pm.setAttr(curCam+'.t',lock=True)
         pm.setAttr(curCam+'.r',lock=True)
+        addImgBookMark()
 
 #Select image plane
 def selImgPln():
     pm.select(ImgPln[0],r=True)
+    if(pm.getAttr(ImgPln[0]+'.t',lock=True)):
+        pm.setAttr(ImgPln[0]+'.t',lock=False)
+        pm.setAttr(ImgPln[0]+'.r',lock=False)
+        pm.setAttr(ImgPln[0]+'.s',lock=False)
+        pm.toggle(ImgPln[0],state=False,template=True)
 
+'''
 #Toggle lock image plane's translate rotate and scale
 def imgPlnLockTgl():
     if(pm.getAttr(ImgPln[0]+'.t',lock=True)):
@@ -61,17 +68,26 @@ def imgPlnLockTgl():
         pm.setAttr(ImgPln[0]+'.r',lock=False)
         pm.setAttr(ImgPln[0]+'.s',lock=False)
         pm.toggle(ImgPln[0],state=False,template=True)
+        pm.select(ImgPln,r=True)
     else:
         pm.setAttr(ImgPln[0]+'.t',lock=True)
         pm.setAttr(ImgPln[0]+'.r',lock=True)
         pm.setAttr(ImgPln[0]+'.s',lock=True)
         pm.toggle(ImgPln[0],state=True,template=True)
+        pm.select(ImgPln,d=True)
+'''
+#Lock the image plane
+def imgPlnLock():
+    if(pm.getAttr(ImgPln[0]+'.t',lock=False)):
+        pm.setAttr(ImgPln[0]+'.t',lock=True)
+        pm.setAttr(ImgPln[0]+'.r',lock=True)
+        pm.setAttr(ImgPln[0]+'.s',lock=True)
+        pm.toggle(ImgPln[0],state=True,template=True)
+        pm.select(ImgPln,d=True)
 
 #remove image plane and cleanup
 def cleanupImgPln():
     pm.delete(pLoc)
-
-
 
 #bookmark camera position
 def addImgBookMark():
