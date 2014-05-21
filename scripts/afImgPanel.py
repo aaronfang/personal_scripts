@@ -230,8 +230,7 @@ def transImgPlnDp():
             pm.setAttr(ImgPln[0]+'.translateY',0)
             pm.setAttr(ImgPln[0]+'.translateZ',(camDp)*0.1)
             pm.setAttr(ImgPln[0]+'.s',1,1,1)
-    
-#HUD
+
 
 #change image file
 def changeImgFile():
@@ -251,12 +250,24 @@ def changeImgFile():
         pm.setAttr(ImgPln[0]+'.translateY',0)
 
 
+#HUD
+
+imgWH = pm.imagePlane('imagePlaneShape1',q=True,width=True,height=True)
+imgScale = pm.getAttr('imagePlane1'+'.s')
+imgWth = imgWH[0]*imgScale[0]
+imgHigh = imgWH[1]*imgScale[0]
+pm.xform('nurbsCircle1',r=True,os=True,t=(imgWth/2,imgHigh/2,0))
+#constraint control's x,y to the image plane's x,y
+pm.parentConstraint('imagePlane1','nurbsCircle1',st='z',mo=True)
+#constraint image plane's z to the control's z
+pm.parentConstraint('nurbsCircle1','imagePlane1',st=['x','y'],mo=True)
+
+#cursor hover menu
+#http://tech-artists.org/forum/showthread.php?419-popUpMenu-mel-notes-quot-dagObjectHit-quot
+
 
 
 #More Image Planes to the camera
-
-
-
 
 
 
