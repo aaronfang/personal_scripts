@@ -251,7 +251,7 @@ def changeImgFile():
 
 
 #HUD
-
+'''
 imgWH = pm.imagePlane('imagePlaneShape1',q=True,width=True,height=True)
 imgScale = pm.getAttr('imagePlane1'+'.s')
 imgWth = imgWH[0]*imgScale[0]
