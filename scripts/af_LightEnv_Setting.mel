@@ -1,0 +1,98 @@
+/*
+Lighting:
+1, switch HDR images
+2, rotate skydome
+3, brightness and contrast
+4, 3point light rig (on/off, intesity, color)
+Camera:
+1, lens/FOV
+2, DOF
+3, Reslusion
+Background:
+1, change background (no background)
+2, table/base(on/off shadow)
+Material:
+1, clay mat(with finger prints)
+2, 3S mat
+3, bumps/normal maps
+4, eyeball mat
+Mesh:
+1, eyeball
+2, Base table
+3, background geo
+Render settings:
+1, global sample
+2, render size(small with low sample/mid with mid sample/large with higher sample/final render)
+Presets:
+1, several preset renders (full lighting and env setup)
+output settings:
+1, channels
+2, format
+3, sizes
+Auto-compose in PS/Nuke
+*/
+
+//temp code:
+
+global proc afArnoldWin()
+{
+    if (`window -q -ex afArnoldWin`==1)deleteUI afArnoldWin;
+    window -t "af Arnold Global Setting" afArnoldWin;
+        columnLayout;
+            frameLayout -l "Light Setting:";
+                floatSliderGrp -f 1 -min 0 -max 1 -fmx 10 -l "SkyDome Intensity" -v 0.1 -cc "afEdHdrValue()" afHdrFld;
+                floatSliderGrp -f 1 -min 0 -max 360 -fmx 360 -l "SkyDome Rotation" -v 0 -cc "afEdSkyRot()" afSkyRotFld;
+                floatSliderGrp -f 1 -min 0 -max 360 -fmx 360 -l "LightGrp Rotation" -v 0 -cc "afEdLightRot()" afLightRotFld;
+                floatSliderGrp -f 1 -min 0 -max 5 -fmx 10 -l "MainLight Intensity" -v 1.5 -cc "afEdLightIntA()" afLightIntAFld;
+                floatSliderGrp -f 1 -min 0 -max 5 -fmx 10 -l "BackLight Intensity" -v 1 -cc "afEdLightIntB()" afLightIntBFld;
+                intSliderGrp -f 0 -s 1 -min 1 -max 40 -l "HDR Image" -v 40 -dc "afEdHdrIcon()" -cc "afEdHdrImg()" afhdrImgFld;
+            setParent..;
+			image -i "E:/DataBase/Resources/HDR/blur1.png" afHdrIconImg;
+        setParent..;
+    showWindow afArnoldWin;
+}
+
+global proc afEdHdrValue()
+{
+    $hdrValue = `floatSliderGrp -q -v afHdrFld`;
+    setAttr "af_aiSkyDomeLightShape.intensity" $hdrValue;
+}
+
+global proc afEdSkyRot()
+{
+    $SkyRot = `floatSliderGrp -q -v afSkyRotFld`;
+    setAttr "af_aiSkyDomeLight.rotateY" $SkyRot;
+}
+
+global proc afEdLightRot()
+{
+    $lightRot = `floatSliderGrp -q -v afLightRotFld`;
+    setAttr "af_directLights.rotateY" $lightRot;
+}
+
+global proc afEdLightIntA()
+{
+    $lightIntA = `floatSliderGrp -q -v afLightIntAFld`;
+    setAttr "af_mainLight_DLShape.intensity" $lightIntA;
+}
+
+global proc afEdLightIntB()
+{
+    $lightIntB = `floatSliderGrp -q -v afLightIntBFld`;
+    setAttr "af_backLight_DLShape.intensity" $lightIntB;
+}
+
+global proc afEdHdrImg()
+{
+    $allHdrs = `container -q -nl HDRIs`;
+    int $hdrImg = `intSliderGrp -q -v afhdrImgFld`;
+    connectAttr -force ($allHdrs[$hdrImg]+".outColor") "af_aiSkyDomeLightShape.color";
+}
+
+global proc afEdHdrIcon()
+{
+	$allHdrs = `container -q -nl HDRIs`;
+	int $hdrImg = `intSliderGrp -q -v afhdrImgFld`;
+	$fullPath = "E:/DataBase/Resources/HDR/" + $allHdrs[$hdrImg] + ".png";
+	image -e -i $fullPath afHdrIconImg;
+}
