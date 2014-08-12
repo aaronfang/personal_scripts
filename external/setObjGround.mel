@@ -1,0 +1,16 @@
+string $objs[]=`ls -sl`;
+string $terrain="pPlane1";
+string $geoConstraint[];
+vector $objPos;
+ 
+for ($x=0; $x<size($objs); ++$x){
+	$objPos=`getAttr ($objs[$x]+".translate")`;
+	$geoConstraint=`geometryConstraint $terrain $objs[$x]`;
+	select $objs[$x];
+	move -a -moveXZ ($objPos.x) ($objPos.z);
+	move -a -moveXZ ($objPos.x) ($objPos.z);
+	move -a -moveXZ ($objPos.x) ($objPos.z);
+	move -a -moveXZ ($objPos.x) ($objPos.z);
+	move -a -moveXZ ($objPos.x) ($objPos.z);
+	delete $geoConstraint[0];
+}
