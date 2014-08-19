@@ -4,6 +4,8 @@ import maya.mel as mm
 
 def afUnfoldUDIM():
     #select UV shells
+    curSelUVs = pm.ls(sl=True)
+
     mm.eval("PolySelectConvert 1")
     
     UVBbox = pm.polyEvaluate(curSelUVs, bc2 = True)
