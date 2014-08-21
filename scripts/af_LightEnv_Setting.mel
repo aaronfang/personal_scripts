@@ -4,6 +4,7 @@ Lighting:
 2, rotate skydome
 3, brightness and contrast
 4, 3point light rig (on/off, intesity, color)
+5, light links
 Camera:
 1, lens/FOV
 2, DOF
@@ -20,6 +21,7 @@ Mesh:
 1, eyeball
 2, Base table
 3, background geo
+4, render smooth
 Render settings:
 1, global sample
 2, render size(small with low sample/mid with mid sample/large with higher sample/final render)
