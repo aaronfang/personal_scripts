@@ -39,8 +39,14 @@ pm.addAttr(gpNd,p='scal_info',ln='scale_infoY',at='double')
 pm.addAttr(gpNd,p='scal_info',ln='scale_infoZ',at='double')
 pm.setAttr((gpNd+'.scal_info'),sclGrp,type='double3')
 
-# Move Grp to the origin and Freeze Transform. Then move it back to where it was.
+# Move Grp to the origin and Freeze Transform. Then move it back to where it was,
+# With the right xform info.
 pm.xform(gpNd,ws=1,t=(transVal[0]-transGrp[0],transVal[1]-transGrp[1],transVal[2]-transGrp[2]))
 pm.xform(gpNd,r=1,ro=(-rotGrp[0],-rotGrp[1],-rotGrp[2]))
 pm.xform(gpNd,r=1,s=(1/sclGrp[0],1/sclGrp[1],1/sclGrp[2]))
 
+pm.makeIdentity(apply=1,t=1,r=1,s=1,n=0,pn=0)
+
+pm.xform(gpNd,ws=1,t=(transGrp[0],transGrp[1],transGrp[2]))
+pm.xform(gpNd,r=1,ro=(rotGrp[0],rotGrp[1],rotGrp[2]))
+pm.xform(gpNd,r=1,s=(sclGrp[0],sclGrp[1],sclGrp[2]))
