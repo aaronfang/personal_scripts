@@ -1,0 +1,8 @@
+$curPnl = `getPanel -withFocus`;
+$layers = `getLayerSelection ""`;
+$layerNm = size ($layers);
+if ( $layerNm == 0)enableIsolateSelect $curPnl false;
+else{layerEditorSelectObjects "";
+enableIsolateSelect $curPnl false;
+enableIsolateSelect $curPnl true;
+select -d;}
