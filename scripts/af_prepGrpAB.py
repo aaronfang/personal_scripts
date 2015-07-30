@@ -41,4 +41,8 @@ pm.select(gpNd,r=1)
 # af_prepGrpB.py
 # Summary: This script parent pivot group back to the assets structure.
 
-# 
+# get the parent node of the curSel Asset
+prtNd = pm.listRelatives(curSel,p=1)
+pm.parent(gpNd,prtNd)
+pm.parent(curSel,gpNd)
+pm.select(gpNd,r=1)
