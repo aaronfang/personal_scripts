@@ -26,7 +26,7 @@ trans = pm.xform(curSel,ws=1,piv=1,q=1)
 rot = pm.xform(curSel,ws=1,ro=1,q=1)
 scl = pm.xform(curSel,ws=1,s=1,q=1)
 gpNd = pm.group(n=assetNm,em=1)
-pm.xform(gpNd,s=sclAfter,t=trans[0:3],ro=rot)
+pm.xform(gpNd,s=scl,t=trans[0:3],ro=rot)
 
 # display local rotation axis
 mm.eval('ToggleLocalRotationAxes')
