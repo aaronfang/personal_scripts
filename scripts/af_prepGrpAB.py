@@ -32,7 +32,10 @@ pm.xform(gpNd,s=scl,t=trans[0:3],ro=rot)
 mm.eval('ToggleLocalRotationAxes')
 
 # isolate assets
+pm.select(curSel,add=1)
 mm.eval('$currentPanel = `getPanel -withFocus`;enableIsolateSelect $currentPanel true;')
+pm.select(gpNd,r=1)
+
 
 # ------------------------------------------
 # af_prepGrpB.py
