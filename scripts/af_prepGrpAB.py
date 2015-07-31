@@ -34,7 +34,9 @@ mm.eval('ToggleLocalRotationAxes')
 # isolate assets
 pm.select(curSel,add=1)
 mm.eval('$currentPanel = `getPanel -withFocus`;enableIsolateSelect $currentPanel true;')
+mm.eval('fitPanel -selected')
 pm.select(gpNd,r=1)
+
 
 
 # ------------------------------------------
@@ -45,4 +47,13 @@ pm.select(gpNd,r=1)
 prtNd = pm.listRelatives(curSel,p=1)
 pm.parent(gpNd,prtNd)
 pm.parent(curSel,gpNd)
+mm.eval('$currentPanel = `getPanel -withFocus`;enableIsolateSelect $currentPanel false;')
 pm.select(gpNd,r=1)
+'''
+tGrp = pm.xform(gpNd,ws=1,piv=1,q=1)[0:3]
+rGrp = pm.xform(gpNd,ws=1,ro=1,q=1)
+sGrp = pm.xform(gpNd,ws=1,s=1,q=1)
+pm.xform(gpNd,s=(1,1,1),t=(0,0,0),ro=(0,0,0))
+resp = pm.confirmDialog(t='Preview',m='Put it back!',b='Yes')
+if resp == 'Yes':pm.xform(gpNd,s=sGrp,t=tGrp,ro=rGrp)
+'''
