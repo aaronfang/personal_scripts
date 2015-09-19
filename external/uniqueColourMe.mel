@@ -1,0 +1,15 @@
+global proc uniqueColourMe()
+{
+string $mySelection[] = `ls -sl`;
+int $totalOBJs = `size($mySelection)`;
+float $spectrumDivisions = 1.0/$totalOBJs;
+
+	for ($n=0 ; $n<size($mySelection) ; $n++)
+	{
+		string $mySelectionShapes[] = `listRelatives -s $mySelection[$n]`;
+		string $sGroupTempToCopy[] = `listSets -type 1 -o $mySelectionShapes[0]`;
+		string $material[] = `listConnections ($sGroupTempToCopy[0] + ".surfaceShader")`;
+		float $rgbVal[] = `hsv_to_rgb <<$spectrumDivisions*$n, 1, 1>>`;
+		setAttr ($material[0] + ".color") -type double3 $rgbVal[0] $rgbVal[1] $rgbVal[2];
+	}
+}
