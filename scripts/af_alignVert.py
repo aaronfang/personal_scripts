@@ -8,8 +8,8 @@ import maya.cmds as mc
 import math as mh
 def main():
     # turn on selection order
-    if (cmds.selectPref(tso=1,q=1))==0:
-        cmds.selectPref(tso=1)
+    if (mc.selectPref(tso=1,q=1))==0:
+        mc.selectPref(tso=1)
 	# select vertices. first one and last one will define the line
     sel = mc.ls(fl=1,os=1)
     if len(sel) > 2:
