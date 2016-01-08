@@ -1,0 +1,163 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: flatten Model by UV
+''    Author:  
+''    Last Updated: Aug 24, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/animation/4878.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+TNTII_FlatModel
+
+////////////////////////////////////////
+//  Flatten Model V0.12               //
+//                                    //
+//  Author: leson lai [ Lai ji ]China //
+//                                    //
+//  Messenger: TNTII1981@hotmail.com  //
+//  Page   www.GameLaa.com            //
+//                                    //
+////////////////////////////////////////
+//       Please keep this title       //
+////////////////////////////////////////
+
+//////
+;////
+;///
+;//
+//
+global proc TNTII_MTU_Unwrap(string $ObjName)
+{	if (`window -q -ex scriptEditorPanel1Window`) deleteUI scriptEditorPanel1Window;
+	if (`window -q -ex polyTexturePlacementPanel1Window`) deleteUI polyTexturePlacementPanel1Window;
+	int $VtxNum[] = `polyEvaluate -v` , $X = (`checkBox -q -v FM_Z_pivot`*1) + (`checkBox -q -v FM_Y_pivot`*2) + (`checkBox -q -v FM_X_pivot`*3);
+	for ($A=0;$A<$VtxNum[0];$A++)
+	{
+		string $VTXname = $ObjName + ".vtx[" + $A + "]" ;select $VTXname;
+		float $UVnum[] = `polyEvaluate -bc2`;
+		switch ($X)
+		{
+			case 1: //Z
+				move ($UVnum[0]-0.5) ($UVnum[2]-0.5) 0 ;
+				break;
+			case 2: //Y
+				move ($UVnum[0]-0.5) 0 (0.5-$UVnum[2]) ;
+				break;
+			case 3: //X
+				move 0 ($UVnum[2]-0.5) (0.5-$UVnum[0]) ;
+				break;
+			default: break;
+			}
+		progressBar -e -progress ((100 * $A) / $VtxNum[0]) MTU_Rate ;
+		}
+	select -r $ObjName ;
+}
+
+global proc TNTII_MTU_Rate()
+{if(`window -q -ex TNTII_MTU_Rate`)deleteUI TNTII_MTU_Rate;
+window -t "Progress" TNTII_MTU_Rate;
+columnLayout -columnAlign "left" -adjustableColumn true -rowSpacing 2;
+progressBar -h 12 -progress 0 MTU_Rate ;
+progressBar -progress 0 MTU_RateM ;
+showWindow TNTII_MTU_Rate;
+window -edit -wh 256 66 -mxb 0 -mnb 0 -s 0 TNTII_MTU_Rate;
+}
+
+global proc TNTII_MTU_ScalModel(string $ObjName1 ,string  $ObjName2)
+{
+	float $Obj1[] = `xform -q -ws -bb $ObjName1` , 	$Obj2[] = `xform -q -ws -bb $ObjName2` , $ScalRatio ;
+	$Obj1[7] = abs( $Obj1[0] - $Obj1[3] ) ;	$Obj1[8] = abs( $Obj1[1] - $Obj1[4] ) ;	$Obj1[9] = abs( $Obj1[2] - $Obj1[5] ) ;
+	$Obj1[6] = `max $Obj1[7] $Obj1[8]` ;	$Obj1[6] = `max $Obj1[6] $Obj1[9]` ;
+	$Obj2[7] = abs( $Obj2[0] - $Obj2[3] ) ;	$Obj2[8] = abs( $Obj2[1] - $Obj2[4] ) ; $Obj2[9] = abs( $Obj2[2] - $Obj2[5] ) ;
+	$Obj2[6] = `max $Obj2[7] $Obj2[8]` ; $Obj2[6] = `max $Obj2[6] $Obj2[9]` ;
+	$ScalRatio = `floatField -q -v FM_FlattenModel_Rate `*$Obj1[6] / $Obj2[6] ;
+	scale -r $ScalRatio $ScalRatio $ScalRatio $ObjName2 ;
+	move -r (( $Obj1[0] + $Obj1[3] )/2) (( $Obj1[1] + $Obj1[4] )/2) (( $Obj1[2] + $Obj1[5] )/2) $ObjName2 ;
+	FreezeTransformations;DeleteHistory;
+	}
+
+global proc TNTII_ModelTOUV()
+{	string $SLobj[] = `ls -sl` ;
+	if (`size $SLobj` > 0)
+	{ TNTII_MTU_Rate ;
+		for ($A=0;$A<`size $SLobj`;$A++)
+		if (`match "BlendShape" $SLobj[$A]` != "BlendShape")
+	{	window -e -t ("Progress >  " + $SLobj[$A]) TNTII_MTU_Rate;
+		progressBar -e -progress ((100*$A)/`size $SLobj`) MTU_RateM ;
+	{	string $BlendShape1 , $BlendShape2 ;
+		select -r $SLobj[$A] ;
+		{string $TempName[] = `duplicate -n ($SLobj[$A]+"_BlendShape1")` ; $BlendShape1 = $TempName[0] ;}
+		polySoftEdge -a 0 -ch 1 $BlendShape1;FreezeTransformations;DeleteHistory;
+		PolySelectConvert 4;polySelectBorderShell 1;SplitVertex;
+		select -r $BlendShape1 ;FreezeTransformations;DeleteHistory;
+		{string $TempName[] = `duplicate -n ($SLobj[$A]+"_BlendShape2")` ; $BlendShape2 = $TempName[0] ;}
+		TNTII_MTU_Unwrap($BlendShape2) ;//Unwrap
+		CenterPivot $BlendShape2;TNTII_MTU_ScalModel($SLobj[$A],$BlendShape2);
+		string $BlandName[] = `blendShape $BlendShape2 $BlendShape1`;
+		addAttr -ln FlattenModel -at double  -min 0 -max 1 -dv 0 ("|" + $BlendShape1);setAttr -e -keyable true ("|" + $BlendShape1 + ".FlattenModel");
+		expression -s ($BlandName[0] + "." + $BlendShape2 + " = " + $BlendShape1 + ".FlattenModel")  -o pCube1_BlendShape1 -ae 1 -uc all ;
+		parent $BlendShape2 $BlendShape1 ;parent $SLobj[$A] $BlendShape1 ;
+		hide $SLobj[$A] $BlendShape2 ;$SLobj[$A] = $BlendShape1 ;
+	}}deleteUI TNTII_MTU_Rate;floatSlider -e -v 0 FM_FlattenModel ;
+}
+	select -r $SLobj ;
+}
+
+global proc FM_FlattenModel_Del()
+{
+	string $SLobj[] = `ls -sl` , $KeepOBJ ;
+	for ($A=0;$A<`size $SLobj`;$A++)
+{if (`match "BlendShape" $SLobj[$A]` == "BlendShape")
+{	string $SLTname[] ; tokenize $SLobj[$A] "_" $SLTname;int $NumSL = `size $SLTname` ;
+	$KeepOBJ = `substitute ("_"+$SLTname[$NumSL-1]) $SLobj[$A] ""`;
+	parent -world $KeepOBJ; showHidden -a $KeepOBJ;delete $SLobj[$A];
+	$SLobj[$A] = $KeepOBJ;
+}}select $SLobj ;
+}
+
+global proc FM_FlattenModel_CCS()
+{
+	string $SLobj[] = `ls -sl` ;
+	if (!`size $SLobj`)warning "Please select BlendShape object !" ;
+	for ($A=0;$A<`size $SLobj`;$A++)
+	{	string $PD[] = `ls ($SLobj[$A]+".FlattenModel")` ;
+		if (`size $PD` > 0)	setAttr ($SLobj[$A]+".FlattenModel") `floatSlider -q -v FM_FlattenModel`;
+		else warning "This is not BlendShape object !" ;
+		}
+}
+
+global proc TNTII_About ()
+{confirmDialog -m ("Author     :  Leson Lai\nMessage :  TNTII1981@hotmail.com")
+	-t Author -button "Ok" -defaultButton "Ok" ;}
+global proc TNTII_HelpOline(){system( "load www.gamelaa.com" );}
+
+global proc FM_FlattenModel_CCP(int $X)
+{
+if ($X == 1)checkBox -e -v 1 FM_X_pivot;else checkBox -e -v 0 FM_X_pivot;
+if ($X == 2)checkBox -e -v 1 FM_Y_pivot;else checkBox -e -v 0 FM_Y_pivot;
+if ($X == 3)checkBox -e -v 1 FM_Z_pivot;else checkBox -e -v 0 FM_Z_pivot;
+}
+
+global proc TNTII_FlatModel()
+{if(`window -q -ex TNTII_FlatModel`)deleteUI TNTII_FlatModel;
+window -menuBar 1 -t "Flatten Model V0.12" TNTII_FlatModel;
+	menu -l "File" ;
+		menuItem -l "Reset" -command "FM_FlattenModel_CCP(3);floatField -e -value 2 FM_FlattenModel_Rate ;floatSlider -e -v 0 FM_FlattenModel ;";
+	menu -l "About" ;
+		menuItem -l "Online Help"  -command TNTII_HelpOline -annotation "About Tools Help";
+		menuItem -command TNTII_About -l "Author";
+columnLayout -columnAlign "center" -adjustableColumn true -rowSpacing 3;
+button -bgc 0.6 0.9 0.6 -l "Flatten Model" -c TNTII_ModelTOUV;
+checkBox -l "Flatten by Z pivot" -cc "FM_FlattenModel_CCP(3)" -value 1 FM_Z_pivot ;
+checkBox -l "Flatten by X pivot" -cc "FM_FlattenModel_CCP(1)" -value 0 FM_X_pivot ;
+checkBox -l "Flatten by Y pivot" -cc "FM_FlattenModel_CCP(2)" -value 0 FM_Y_pivot ;
+floatField -value 2 FM_FlattenModel_Rate ;
+button -bgc 0.9 0.8 0.8 -l "Delete Flatten Model" -c FM_FlattenModel_Del;
+floatSlider -maxValue 1 -cc FM_FlattenModel_CCS FM_FlattenModel ;
+showWindow TNTII_FlatModel;
+window -edit -wh 168 206 -mxb 0 -mnb 0 -s 0 TNTII_FlatModel;
+}
