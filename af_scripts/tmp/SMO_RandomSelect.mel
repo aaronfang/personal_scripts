@@ -1,0 +1,78 @@
+//------------------------------------------------------------------------------//
+//        Script:        SMO_RandomSelect.mel
+//
+//        Version:       1.1
+//
+//        Author:        Steven Olver
+//                       stevenolver@gmail.com    
+//
+//        Date:          5th April 2011
+//
+//        Description:   Randomly selects objects within your current selection or
+//                       randomly selects faces, edges and vertices from within your
+//                       current selection.
+//
+//        Installation:  Place SMO_RandomSelect.mel and SMO_RandomSelectShelfButton.mel
+//                       in your Documents\maya\2011-x64\scripts folder. Load the
+//                       SMO_RandomSelectShelfButton.mel into script editor, select
+//                       the text and middle mouse drag it to your shelf.
+//
+//        Usage:         Select objects, faces, edges or vertices you'd like to randomly
+//                       select from and click the shelf button. Use the Bias slider to bias
+//                       the randomness towards less objects (closer to 0) or more objects
+//                       (closer to 1). 0 will select no objects and 1 will select all objects.
+//                       0.5 is the default, this will give each object a 50% chance of
+//                       being selected.
+//
+//                       (C) Copyright Steven Olver 2011
+//
+//------------------------------------------------------------------------------//
+
+global proc SMO_RandomSelect()
+{
+    //Delete and define window
+    if ( `window -exists SMO_RandomSelectWindow` )
+        {
+            deleteUI SMO_RandomSelectWindow;
+        }
+    window -t "SMO_RandomSelect" -wh 300 75 SMO_RandomSelectWindow;
+    
+    
+    //Define layout elements
+    formLayout SMO_RandomSelect_Form;
+    
+    floatSliderGrp -l "Bias" -f true -min 0.0 -max 1.0 -v 0.5 -pre 2 Bias;
+    button -l "OK" -command "SMO_RandomSelectExecute" OKButton;
+    
+    formLayout -edit
+    
+    -af Bias "top" 10
+    -af Bias "left" -110
+    
+    -ac OKButton "top" 10 Bias
+    -af OKButton "left" 10
+    SMO_RandomSelect_Form;
+    
+    showWindow SMO_RandomSelectWindow;
+}
+
+
+//Main proc. Grabs the value from the float slider and puts it in $Bias.
+//For each object selected it generates a random value between 0 an 1.
+//This is checked against the float value and if it's greater than the
+//float value it deselects that object.
+global proc SMO_RandomSelectExecute()
+{
+    float $bias = `floatSliderGrp -q -v Bias`;
+    string $selected[] = `ls -sl -flatten`;
+    for ($object in $selected)
+    {
+        float $randomSelect = rand (0,1);
+        if ($randomSelect > $bias)
+        {
+            select -d $object;
+        }
+    }
+}
+
+//End
