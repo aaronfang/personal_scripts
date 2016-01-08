@@ -1,0 +1,950 @@
+// mod_renamer by Min-Yu Chang 5-15-06
+// ****
+// renaming Tool for replace, add and remove characters for the objects in your scene. 
+// includeing enumerator by Jeff Hayes and updtated with start number function.
+// last section allows you to reorder the nodes and find repeated name in the scene.
+
+///
+// Delete the main window.
+//
+global proc mod_renamer.deleteWindow() {
+    if(`window -exists renamerWindow`) {
+        deleteUI renamerWindow;
+    }
+}
+
+
+
+global proc mod_renamer.rebuildWindow() {
+    mod_renamer.deleteWindow();
+    mod_renamer();
+}
+
+global proc mod_renamer()
+{
+    if ( `window -exists renamerWindow` )
+        showWindow renamerWindow;
+
+    else
+    {
+        window -title "Renamer" -w 535 -h 530 -retain -resizeToFitChildren true -iconName "Renamer" renamerWindow;
+        
+        //menu -label "Help" -tearOff false;
+        string $form = `formLayout -numberOfDivisions 100`;
+        
+        columnLayout -adjustableColumn true renameCL;
+        
+        radioButtonGrp -select 1 -numberOfRadioButtons 2 -label "Use:" -labelArray2 "Selected" "Group" -changeCommand "" MRN_radioGrp1;
+        
+        frameLayout -l "Replace" -labelAlign "top" -cll true -bs "etchedIn" -marginWidth 10 -marginHeight 10 JFL1;
+        
+        columnLayout -adjustableColumn true mainCL1;
+        rowLayout -numberOfColumns 2 -columnWidth 1 210 -columnWidth 2 210;    
+            string $f = `textFieldGrp -label "Replace" -cw2 70 180 -ann "Hold on RMB to choose strings from pop-up menu" TFG1`;
+            	popupMenu -button 3;
+				mod_renamer.createPresetMenu("TFG1");
+			string $r = `textFieldGrp -label "...with" -cw2 100 180 -ann "Hold on RMB to choose strings from pop-up menu" TFG2`;
+				popupMenu -button 3;
+				mod_renamer.createPresetMenu("TFG2");
+			
+        setParent ..;
+            text -l "";
+
+                string $rep_cmd = ("mod_rep " + $f + "  " + $r );
+                button -label "Replace" -c $rep_cmd -ann "replace names or sections of names";
+            
+			setParent ..;    
+            setParent ..;
+        
+        frameLayout -l "Add and Remove" -labelAlign "top" -cll true -bs "etchedIn" -marginWidth 10 -marginHeight 10 JFL2;
+        columnLayout -adjustableColumn true mainCL2;
+            
+            rowLayout -numberOfColumns 4 -cw4 45 30 175 1 rowlayAR2;    
+                
+                text -l "";
+                text -align "right" -label "Add";
+            string $name_re = `textFieldGrp -w 150 -enable true -ann "Hold on RMB to choose strings from pop-up menu" TFG3`;
+                popupMenu -button 3;
+				mod_renamer.createPresetMenu("TFG3");
+                
+				radioButtonGrp -sl 1 -numberOfRadioButtons 2 -labelArray2 "at start" "at end" MRN_radioGrp3;    
+            
+            setParent ..;
+
+            text -l "";
+            
+                string $add_cmd = ("mod_add " + $name_re + " " + `radioButtonGrp -q -sl MRN_radioGrp3`);
+                button -label "Add" -c $add_cmd -ann "Renames by removing and/or adding characters";
+
+            text -l "";
+            text -l "";
+                        
+            rowLayout -numberOfColumns 5 -cw5 45 55 40 110 1 rowlayAR1;
+            
+                text -l "";
+                text -align "right" -label "Remove";
+                $num_re = `textFieldGrp -text "1" -w 30 -enable true j_char`;
+                text -label "characters"  -align "center";           
+                radioButtonGrp -sl 1 -numberOfRadioButtons 2 -labelArray2 "at start" "at end" MRN_radioGrp2;
+            
+            setParent ..;
+
+            text -l "";
+
+                string $remove_cmd = ("mod_remove " + $num_re + " " + `radioButtonGrp -q -sl MRN_radioGrp2`);
+                button -label "Remove" -c $remove_cmd -align "center" -ann "Renames by removing and/or adding characters";
+
+            setParent ..;    
+            setParent ..;
+
+        frameLayout -l "enumerator" -labelAlign "top" -cll 1 -bs "etchedIn" -marginWidth 10 -marginHeight 10 JFL3;
+        columnLayout -adjustableColumn true mainCL3;
+        rowLayout -numberOfColumns 3 -columnWidth 1 10 -columnWidth 2 300 -columnWidth 3 78;        
+
+            button -label "?" -command "enumeratorHelpCallback" enumeratorHelpButton;
+                
+			textFieldGrp -label "Base Name" -cc exampleQuery -cw2 100 140 -ann "Hold on RMB to choose strings from pop-up menu" TFG4;
+				popupMenu -button 3;
+				mod_renamer.createPresetMenu("TFG4");
+             
+			 textFieldGrp -label "Start Number or Letter" -w 170 -cc exampleQuery -en true -text "1" -columnWidth 2 25 StartNum;
+
+                          
+                setParent mainCL3;
+
+            text -l "";    
+                        
+                rowLayout -numberOfColumns 3 -cat 1 "right" 5 -columnWidth 1 120 -columnWidth 2 55 -columnWidth 3 60;
+                            text -l "";
+                            text -l "Example:";
+                            text -l "part1" showNameExample;
+
+            setParent mainCL3;
+
+                button -label "GO!" -align "center" -command ("enumerator");
+
+            setParent ..;    
+            setParent ..;
+
+
+        frameLayout -l "Name Utilities" -labelAlign "top" -cll 1 -bs "etchedIn" -marginWidth 10 -marginHeight 10 JFL4;
+        columnLayout -adjustableColumn true mainCL4;
+        rowLayout -numberOfColumns 4 -cw4 100 100 150 150
+                    -columnAlign 1 "center" -columnAlign 2 "center" -columnAlign 3 "center" -columnAlign 4 "center"
+                  -columnAttach 1 "both"  0 -columnAttach 2 "both"  0 -columnAttach 3 "both"  0 -columnAttach 4 "both"  0;
+        
+
+            // string $reo_cmd = ("mod_quickSort " + $f + "  " + $r );
+                        string $reo_cmd = "mod_surfSort";
+            button -l "Copy name" -c "mod_copyName" -ann "Copy selected object's name to the rest selected objects";
+			button -l "Sort nodes" -c $reo_cmd -ann "Reorders selected nodes alphabetically";
+            button -l "Find repeated names" -c "namesClean" -ann "selects all surfaces in the scene\nwith repeated names";
+            button -l "Fix repeated names" -c "namesUnclash" -ann "renames all clashing nodes in the scene\nto fix name conflicts";
+            
+            setParent ..;
+            mod_renamer.createNailButton();
+            setParent renameCL;
+            
+            text -l "";
+            button -label "Close" -align "center" -command "window -edit -visible false renamerWindow";
+
+        formLayout -edit
+                -attachForm renameCL "top" 5
+                -attachNone renameCL "bottom"
+                -attachForm renameCL "left" 5
+                -attachForm renameCL "right" 5
+                $form;
+                
+    showWindow renamerWindow;
+
+    }
+
+}
+
+///
+// 
+//
+global proc mod_renamer.createNailButton() {
+    
+    button -l "Name Nails" -c "mod_nameNails" -ann "Select finger or to nails (thumb first),\nthen click this to rename them.";
+    popupMenu -button 1;
+    menuItem -l "Finger nails (thumb first)" -c "mod_nameNails \"\"";
+    menuItem -l "Toe nails (thumb first)" -c "mod_nameNails \"toes\"";
+}
+
+
+///////////////////////replace
+global proc mod_rep ( string $f, string $r )
+{
+    int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+    string $fv = `textFieldGrp -q -text $f`;
+    string $rv = `textFieldGrp -q -text $r`;
+    
+    string $selList[] = `ls -sl -l -o`;
+    
+    if  ( $selectMode == 2) {
+            
+            $selList = `listRelatives -ad -f -type "transform"`;
+          
+    }
+
+    string $buff[];
+    string $nv;
+    string $new;
+    if( size( $selList ) != 0 )
+        {
+        // prepare the names so they can be sorted in
+        // order of depth in the hierarchy
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $depth[$i] =  `tokenize $selList[$i] "|" $buff`;
+            $selList[$i] = ((string)($depth[$i] + 10000) + $selList[$i]);
+            }
+        // sort from top to bottom
+        $selList = `sort $selList`;
+        //print $selList;
+        // strip the numbers off the front again - i.e. restore the original names
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $strlen = `size $selList[$i]`;  
+            $selList[$i] = `substring $selList[$i] 6 $strlen`;
+            }
+        // loop through in reverse order - i.e. bottom up
+        int $numSplit;
+        for( $i = (size( $selList ) - 1);  $i >= 0; $i-- )
+            {
+            string $trueName = mod_renamer.getName($selList[$i]);
+            $num_tokens = `tokenize $trueName "|" $buff`;
+            // create the new name
+            if ($fv == "*")
+            $new = `substitute $buff[($num_tokens - 1)] $buff[($num_tokens - 1)]  $rv`;
+            else
+            $new = `substitute $fv $buff[($num_tokens - 1)]  $rv`;
+            string $discardBuff[];
+            mod_renamer.setName($selList[$i], $new);
+            }
+        }
+}
+
+
+global proc mod_add ( string $rep, int $se2)
+{
+    // values from widgets
+    int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+    string $rv = `textFieldGrp -q -text $rep`;
+    string $nua = 0;
+    int $nadd = $nua;
+    int $nsub = $nua;
+    
+    string $selList[] = `ls -sl -l -o`;
+    
+    if  ( $selectMode == 2) {
+            
+            $selList = `listRelatives -ad -f -type "transform"`;
+    }
+    
+    string $buff[];
+    string $nv;
+    string $new;
+
+    if( size( $selList ) != 0 )
+        {
+        // prepare the names so they can be sorted in
+        // order of depth in the hierarchy
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $depth[$i] =  `tokenize $selList[$i] "|" $buff`;
+            $selList[$i] = ((string)($depth[$i] + 10000) + $selList[$i]);
+            }
+        // sort from top to bottom
+        $selList = `sort $selList`;
+
+        // strip the numbers off the front again - i.e. restore the original names
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $strlen = `size $selList[$i]`;  
+            $selList[$i] = `substring $selList[$i] 6 $strlen`;
+            }
+
+        // loop through in reverse order - i.e. bottom up
+        int $numSplit;
+
+        if ( `radioButtonGrp -q -sl MRN_radioGrp3` == 1)
+            {
+            for( $i = (size( $selList ) - 1);  $i >= 0; $i-- )
+                {
+                string $trueName = mod_renamer.getName($selList[$i]);
+                $num_tokens = `tokenize $trueName "|" $buff`;
+                int $nameSize = `size ($buff[($num_tokens - 1)])`;
+                int $nend = ($nameSize - $nsub);
+                int $nstart = (1 + $nadd);
+                string $sized = `substring $buff[($num_tokens - 1)] $nstart $nend`;
+                // create the new name
+                string $new = ( $rv + $sized);
+                string $discardBuff[];
+                mod_renamer.setName($selList[$i], $new);
+                }
+            }
+        else
+            {
+            for( $i = (size( $selList ) - 1);  $i >= 0; $i-- )
+                {
+                string $trueName = mod_renamer.getName($selList[$i]);
+                $num_tokens = `tokenize $trueName "|" $buff`;
+                int $nameSize = `size ($buff[($num_tokens - 1)])`;
+                int $nend = ($nameSize - $nsub);
+                int $nstart = (1 + $nadd);
+                string $sized = `substring $buff[($num_tokens - 1)] $nstart $nend`;
+                // create the new name
+                string $new = ( $sized+ $rv);
+                string $discardBuff[];
+                mod_renamer.setName($selList[$i], $new);
+                }
+            }
+        }
+}
+
+
+
+/////////////////////remove
+global proc mod_remove ( string $nu, int $se1 )
+{
+    // values from widgets
+    string $rv = "";
+    int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+    string $nua = `textFieldGrp -q -text $nu`;
+    int $nadd = $nua;
+    int $nsub = $nua;
+    
+    if  ( `radioButtonGrp -q -sl MRN_radioGrp2` == 1) {
+        $nsub = 0;
+    }
+    if ( `radioButtonGrp -q -sl MRN_radioGrp2`  == 2) {
+        $nadd = 0;
+    }
+
+    string $selList[] = `ls -sl -l -o`;
+    
+    if  ( $selectMode == 2) {
+            
+            $selList = `listRelatives -ad -f -type "transform"`;
+          
+    }
+
+    string $buff[];
+    string $nv;
+    string $new;
+
+    if( size( $selList ) != 0 )
+        {
+        // prepare the names so they can be sorted in
+        // order of depth in the hierarchy
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $depth[$i] =  `tokenize $selList[$i] "|" $buff`;
+            $selList[$i] = ((string)($depth[$i] + 10000) + $selList[$i]);
+            }
+        // sort from top to bottom
+        $selList = `sort $selList`;
+        //print $selList;
+        // strip the numbers off the front again - i.e. restore the original names
+        for( $i=0; $i < size( $selList ); $i++ )
+            {
+            $strlen = `size $selList[$i]`;  
+            $selList[$i] = `substring $selList[$i] 6 $strlen`;
+            }
+        // loop through in reverse order - i.e. bottom up
+        int $numSplit;
+        if ( `radioButtonGrp -q -sl MRN_radioGrp3` == 1)
+            {
+            for( $i = (size( $selList ) - 1);  $i >= 0; $i-- )
+                {
+                string $trueName = mod_renamer.getName($selList[$i]);
+                $num_tokens = `tokenize $trueName "|" $buff`;
+                int $nameSize = `size ($buff[($num_tokens - 1)])`;
+                int $nend = ($nameSize - $nsub);
+                int $nstart = (1 + $nadd);
+                string $sized = `substring $buff[($num_tokens - 1)] $nstart $nend`;
+                // create the new name
+                string $new = ( $rv + $sized);
+                string $discardBuff[];
+                mod_renamer.setName($selList[$i], $new);
+                }
+            }
+        else
+            {
+            for( $i = (size( $selList ) - 1);  $i >= 0; $i-- )
+                {
+                string $trueName = mod_renamer.getName($selList[$i]);
+                $num_tokens = `tokenize $trueName "|" $buff`;
+                int $nameSize = `size ($buff[($num_tokens - 1)])`;
+                int $nend = ($nameSize - $nsub);
+                int $nstart = (1 + $nadd);
+                string $sized = `substring $buff[($num_tokens - 1)] $nstart $nend`;
+                // create the new name
+                string $new = ( $sized+ $rv);
+                string $discardBuff[];
+                mod_renamer.setName($selList[$i], $new);
+                }
+            }
+        }
+}
+
+global proc mod_copyName()
+{
+	int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+	string $selList[] = `ls -sl -l`;
+	string $toks[]; string $selChildList[], $newSelList[];
+	
+	tokenize $selList[0] "|" $toks;	
+	string $getName = $toks[(size($toks) - 1)];
+	
+	
+	if  ( $selectMode == 2) 
+	{ 
+		select -r $selList[1];
+		$selChildList = `listRelatives -ad -f -type "transform"`;
+		if(size($selChildList) == 0) error("The 2nd object doesn't have any child. Change to Selected mode and try again!");
+		
+		select -r $selList[0];
+		select -add $selChildList;
+		$newSelList = `ls -sl -l`;
+		
+		select -d $newSelList[0];
+		
+		for ($x = 1; $x < size($newSelList); $x++) rename $newSelList[$x] $getName;
+	
+	}else{
+		
+		if (size($selList) > 2)
+		{		
+			select -d $selList[0];
+			string $newSelList[] = `ls -sl -l`;
+			
+			//rename $newSelList[0] ($getName + size($newSelList));
+			for ($x = 0; $x < size($newSelList); $x++) rename $newSelList[$x] $getName;
+
+		}else{
+	
+			rename $selList[1] $getName;
+		}
+	}
+
+}
+
+
+global proc namesClean(){
+    select -cl;
+    string $buffer[];
+    string $temp[] = `ls -o -tr`;
+    for ($obj in $temp){
+        tokenize $obj "|" $buffer;
+        if (`size $buffer` >1) select -tgl $obj;
+    }
+
+        if(size(`ls -sl`)) {
+            
+            j_quickOut( 0, 0, 0);
+
+        } else {
+            print("No repeated names found.\n");
+        }
+
+}
+
+global proc underClean(){
+    string $list[] =`ls -o -dag`;
+    string $buffer[];
+    select -cl;
+    for ($obj in $list){
+        tokenize ($obj+"x") "_" $buffer;
+        if (`size $buffer` <2)select -tgl $obj;
+    }
+    select -d "persp";select -d "top";select -d "side";select -d "front";
+    select -d "perspShape";select -d "topShape";select -d "sideShape";select -d "frontShape";
+    j_quickOut( 0, 0, 0);
+
+}
+
+
+
+global proc mod_quickSort ( string $f, string $r )
+{
+    string $fv = `textFieldGrp -q -text $f`;
+    string $rv = `textFieldGrp -q -text $r`;
+    int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+
+            string $selList[] = `ls -sl -l -o`;
+    
+        if  ( $selectMode == 2) {
+            
+                $selList = `listRelatives -ad -f -type "transform"`;
+          select -r $selList;
+        }
+
+    string $newSort[] = `ls -sl -tr`;
+    string $newSortO;
+    string $tempString[];
+    int $numSize;
+    for ($x=0;$x<`size $newSort`;$x++){
+        $tempString[0] = `match "[0-9]+" $newSort[$x]`;
+        $numSize =`size $tempString[0]`;
+        if($numSize>0){
+            $newSortO = $newSort[$x];
+            $tempString[1]=$tempString[0];
+            for ($y=0;$y<(10-$numSize);$y++){
+                $tempString[1] = ("0"+$tempString[1]);
+            }
+            $tempString[1] = ($tempString[1]+"#"+$newSortO+"#");
+            $newSort[$x] = `substitute $tempString[0] $newSort[$x] $tempString[1]`;
+        }
+    }
+    $newSort = sort($newSort);
+    for ($x=0;$x<`size $newSort`;$x++){
+        if (`gmatch $newSort[$x] "*#*"`){
+            tokenize $newSort[$x] "#" $tempString;
+            $newSort[$x] = $tempString[1];
+        }
+    }
+    for ($xx in $newSort)reorder -back $xx;
+}
+
+///
+// Return true if $counter is a letter and not a number
+//
+global proc int mod_renamer.isLetterCounter(string $counter) {
+    
+    string $result = match("[a-zA-Z]+", $counter);
+    
+    return size($result) != 0;
+    
+}
+
+global string $counterAlphaTable[] = {
+
+        "A","B","C","D","E","F","G","H","I","J","K","L","M",
+        "N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
+        "AA","BB","CC","DD","EE","FF","GG","HH","II","JJ",
+        "KK","LL","MM","NN","OO","PP","QQ","RR","SS","TT",
+        "UU","VV","WW","XX","YY","ZZ",
+
+        "a","b","c","d","e","f","g","h","i","j","k","l","m",
+        "n","o","p","q","r","s","t","u","v","w","x","y","z"
+};
+
+// clear the "global variable already initialized" error;
+print("\n");
+
+///
+// Return the next value for the counter in the sequence.
+// If numeric, return $counter+1
+// If alphabetical, return the next letter.
+//
+global proc string mod_renamer.getCounterValue(int $index, int $isLetter) {
+
+    if(!$isLetter) {
+        return string($index);
+    }
+    global string $counterAlphaTable[];
+
+    return $counterAlphaTable[$index];
+
+    error("value not found for index " + string($index));
+}
+
+///
+// Given $baseString a basestring with "#" in it, replace the #
+// with $count'th
+//
+global proc string mod_renamer.enumerateString(string $baseString,
+                                               int $count,
+                                               int $isLetter) {
+
+    string $counterValue = mod_renamer.getCounterValue($count, $isLetter);
+
+    string $result = substitute("#", $baseString, $counterValue);
+ 
+    return $result;
+}
+
+///
+// Return the integer index of the given counterValue.  If counterValue
+// is a number, return the integer version of that, otherwise, use the
+// index from counterAlphaTable.
+//
+global proc int mod_renamer.getCounterIndex(string $counterValue) {
+    
+    if(mod_renamer.isLetterCounter($counterValue)) {
+        global string $counterAlphaTable[];
+
+        int $i;
+        int $tableSize = size($counterAlphaTable);
+        for ($i=0; $i < $tableSize; $i++) {
+            if($counterAlphaTable[$i] == $counterValue) {
+                return $i;
+            }
+        }
+    }
+
+    int $intIndex = $counterValue;
+
+    return $intIndex;
+    
+}
+
+// name selected nodes with one name and additional iterative numbering //
+// if one node is selected iteration is not added //
+
+global proc enumerator()
+{
+    int $selectMode = `radioButtonGrp -q -sl MRN_radioGrp1`;
+	string $selList[] = `ls -sl -l`;
+
+	if  ( $selectMode == 2)  $selList = `listRelatives -ad -f -type "transform"`;
+	
+    for($item in $selList) {
+        mod_renamer.setName($item, "renamer_temp_name");
+    }
+    
+	$selList = `ls -sl -l`;
+
+	if  ( $selectMode == 2)  $selList = `listRelatives -ad -f -type "transform"`;
+    
+	int $size = `size($selList)`;
+    int $x = 0;
+    string $nodeName = `textFieldGrp -q -text TFG4`;
+    string $counterStart = `textFieldGrp -q -text StartNum`;
+
+    // if no # is explicitly given, add it to the end
+    //
+    if(!gmatch($nodeName, "*#*")) {
+        $nodeName = $nodeName + "#";
+    }
+    
+    // if only one item is selected, don't enumerate it, just rename it.
+    //
+    if ($size == 1){
+        string $newName = substitute("#", $nodeName, "");
+
+        string $realNewName = mod_renamer.setName($selList[0], $newName);
+            
+    } else {
+
+        int $counterIndex = mod_renamer.getCounterIndex($counterStart);
+        int $isLetter = mod_renamer.isLetterCounter($counterStart);
+
+        string $newName;
+        for ($item in $selList) {
+            $newName = mod_renamer.enumerateString($nodeName,
+                                                   $x + $counterIndex,
+                                                   $isLetter);
+
+            string $realNewName = mod_renamer.setName($item, $newName);
+            string $realNewShortName = mod_renamer.getShortName($realNewName);
+
+            print("$realNewName: " + string($realNewName) + "\n");
+            print("$realNewShortName: " + string($realNewShortName) + "\n");
+
+            while($newName != mod_renamer.getName($realNewName)) {
+                $x++;
+                $newName = mod_renamer.enumerateString($nodeName,
+                                                       $x + $counterIndex,
+                                                       $isLetter);
+                $realNewName = mod_renamer.setName($realNewName, $newName);
+            }
+
+            $x++;
+        }
+    }
+}
+
+global proc exampleQuery()
+{
+            string $nodeName = `textFieldGrp -q -text TFG4`;
+            if(!gmatch($nodeName, "*#*")) {
+                $nodeName = $nodeName + "#";
+            }
+        
+            string $counterStart = `textFieldGrp -q -text StartNum`;
+
+            int $counterIndex = mod_renamer.getCounterIndex($counterStart);
+            int $isLetter = mod_renamer.isLetterCounter($counterStart);
+
+
+            string $newName = mod_renamer.enumerateString($nodeName,
+                                                          $counterIndex,
+                                                          $isLetter);
+            text -e -l $newName showNameExample;
+}
+
+///
+// Bring up a help window explaining the Base Name field
+//
+global proc enumeratorHelpCallback() {
+    string $window = "chainSpacingHelp";
+    if(`window -exists $window`) {
+        deleteUI $window;
+    }
+    window -title "Renamer Help: Enumerator" $window;
+
+    string $help = "" +
+        "The '#' symbol will be replaced with your letter or number,\n" +
+        "starting at the given start letter or number.  If you leave out\n" +
+        "the '#', the number will be added at the end.  If your names\n" +
+        "don't start from the Start Character you specific, it's because\n" +
+        "something else in the scene has the same name already.\n\n" +
+
+        "To start with a letter instead of a number, simply type the \n" +
+        "letter you want into the Start Number or Letter field."
+        ;
+
+    frameLayout -bv false -lv false -mw 5 -mh 5;
+
+
+    frameLayout -borderStyle etchedIn -label "Renamer Help: Enumerator"
+        -marginWidth 5 -marginHeight 5;
+    columnLayout;
+    text -label $help -align left;
+
+    showWindow $window;
+    window -e -w 370 -h 160 $window;
+}
+
+
+global proc namesUnclash(){
+
+    string $buffer[];
+    string $objectList[] = `ls -o -tr`;
+    string $obj, $baseName, $newName;
+    int $clashes = 0;
+    for ($obj in $objectList){
+        tokenize $obj "|" $buffer;
+        string $objName = $buffer[size($buffer)-1];
+
+        if (size($buffer) > 1) { // name-clashed nodes will be listed with parent name preceding,
+                                    // so they will be tokenized into 2+ strings
+
+            // CRITICAL STEP: strip off numbers at end of name
+            $baseName = `substitute "[0-9]*$" $objName ""`;
+            
+            string $newName = ($baseName + "#");
+            print ("\n renaming "+$obj+" to resolve name conflict");
+            mod_renamer.setName($obj, $newName);
+            $clashes = 1;
+        }
+    }
+    if ($clashes == 0) print "\n  No clashing names were found in the current scene.";
+}
+
+global proc j_quickOut( string $f, string $r, string $s){
+    string $select[] = `ls -sl`;
+    if ($f != "0"){
+        string $fv = `textFieldGrp -q -text $f`;
+        string $rv = `textFieldGrp -q -text $r`;
+        string $sv = `textFieldGrp -q -text $s`;
+
+    }
+    
+        string $windowName = "Repeated names";  
+        if (size($select) == 0)
+        {
+        
+                warning ( "Nothing selected!  Custom Outliner will not be created." );
+           
+           }
+                        
+        else
+        {
+            if ( `window -exists qkOutliner` )
+                
+            {
+                deleteUI qkOutliner;
+            }    
+                            
+            // Create our selectionConnection - as 'connectionList' type
+            $sc = `selectionConnection -lst`;
+            for ($node in $select) {
+                selectionConnection -e -select $node $sc;
+            }
+
+            // Add current selection to selectionConnection
+
+            // Create window layout to hold Outliner
+            $win = `window -wh 300 500 -title $windowName qkOutliner`;
+
+            string $frame = `frameLayout -lv 0 -bv 1`;
+
+            // Create an unparented outlinerEditor
+            string $oped = `outlinerEditor -mlc $sc -slc "modelList" -showSetMembers true`;
+
+            // Parent the outlinerEditor to this window
+            // outlinerEditor -e -parent $col $oped; //-parent $frame
+
+            // Attach our custom selectionConnection
+            outlinerEditor -e -mlc $sc -slc "modelList" $oped;
+
+            // Create scriptJob to delete selectionConnection when no longer needed
+            scriptJob -uiDeleted $win ( "deleteUI " + $sc );
+                
+            showWindow $win;
+
+            // Need to call refresh so the outliner shows up nonempty.
+            refresh;
+
+        }
+}
+
+///
+// Given a name that potentially has "|" characters in it, return the last
+// name in the path.
+//
+global proc string mod_renamer.getShortName(string $name) {
+    
+    string $arr[] = stringToStringArray($name, "|");
+    return $arr[size($arr)-1];
+}
+
+///
+// Get the name of the object in question, OR if a set with the
+// "MM_OriginalPartName" attribute is selected, then return that name
+// instead.
+//
+global proc string mod_renamer.getName(string $object) {
+    
+    if(nodeType($object) == "objectSet" &&
+       `attributeQuery -node $object -ex "MM_OriginalPartName"`) {
+        return `getAttr ($object + ".MM_OriginalPartName")`;
+    }
+
+    string $arr[] = stringToStringArray($object, "|");
+    print("get $arr: " + stringArrayToString($arr, " ") + "\n");
+    return $arr[size($arr)-1];
+}
+
+///
+// Set the name of the actual object.  If a set with the
+// "MM_OriginalPartName" attribute is selected, then set that name
+// instead.
+//
+global proc string mod_renamer.setName(string $object, string $newName) {
+    
+    if(nodeType($object) == "objectSet" &&
+       `attributeQuery -node $object -ex "MM_OriginalPartName"`) {
+        setAttr -type "string" ($object + ".MM_OriginalPartName") $newName;
+        return `rename $object $newName`;
+    }
+
+    return `rename $object $newName`;
+
+} 
+
+///
+// Create a popup menu for the given $textFieldGroup
+//
+global proc mod_renamer.createPresetMenu(string $textFieldGroup) {
+    string $strings[] = mod_renamer.getPresetStrings();
+
+    for($s in $strings) {
+        if($s == "Selected...") {
+            menuItem
+                -l $s
+                -c ("mod_renamer.insertSelectedObject(\"" +
+                    $textFieldGroup + "\")");
+        } else if (size($s) && startString($s, 1) == "-") {
+            menuItem -l $s -en 0;
+        } else {
+            menuItem -l $s
+                -c ("textFieldGrp -e -insertText " +
+                "\"" + $s + "\" " +
+                    $textFieldGroup)
+                ;
+        }
+        
+    }
+    
+}
+
+///
+// Insert the name of the first selected object into the given
+// $textFieldGroup
+// 
+global proc mod_renamer.insertSelectedObject(string $textFieldGroup) {
+    string $selection[] = `ls -sl`;
+
+    if(!size($selection)) {
+        error("Select an object to add");
+    }
+
+    string $text = mod_renamer.getShortName($selection[0]);
+
+    textFieldGrp -e -insertText $text $textFieldGroup;
+    
+}
+
+///
+// 
+//
+global proc string[] mod_renamer.getPresetStrings() {
+    
+    string $strings[] = {
+        "Selected...",
+        "------",
+        "frnt",
+        "bk",
+        "side",
+        "top",
+        "bot",
+        "------",
+        "brick",
+        "concrete",
+        "debris",
+        "detail",
+        "door",
+        "glass",
+		"grnd",
+        "light",
+        "lite",
+        "metal",
+        "rock",
+        "stone",
+        "subd",
+        "wall",
+        "window",
+        "wood"
+    };
+
+    return $strings;
+    
+}
+
+global proc mod_nameNails (string $type)
+{
+
+	string $selected[] = `ls -sl -l`;
+        string $side = "r";
+        
+        if (size($selected) > 5) error "more than 5 nails selected";
+        
+        $bbox = `xform -q -os -bb $selected[0]`;
+        
+        $center = (($bbox[0] + $bbox[3]) / 2);
+        
+        if ($center > 0) $side = "l";
+	
+        if ($type == "toes")
+        {
+		rename $selected[0] ($side + "_toethumbnail");
+		rename $selected[1] ($side + "_toeindexnail");
+		rename $selected[2] ($side + "_toemiddlenail");
+		rename $selected[3] ($side + "_toeringnail");
+		rename $selected[4] ($side + "_toepinkynail");  
+        }
+        else
+        {
+		rename $selected[0] ($side + "_thumbnail");
+		rename $selected[1] ($side + "_indexnail");
+		rename $selected[2] ($side + "_middlenail");
+		rename $selected[3] ($side + "_ringnail");
+		rename $selected[4] ($side + "_pinkynail");       
+        }
+}
