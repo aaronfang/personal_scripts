@@ -1,0 +1,98 @@
+//uniform scale uv shell
+global proc af_UVRescale()
+{
+	$cuSel = `ls -fl -sl`;
+	$afScaleRatio = `floatField -q -v afScaleFloatFld`;
+
+	for ($i=0; $i < size($cuSel); $i++)
+	{
+		unfold -i 0 -ss 0.001 -gb 0 -gmb 1 -pub 0 -ps  0 -oa  0 -us on -s $afScaleRatio $cuSel[$i];
+
+	}
+}
+
+//shift shells to other quadrants by the given numbers
+
+global proc afSftLeft()
+{
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -r 1 -u (-$afSftVlu) -v 0;
+}
+
+global proc afSftRight()
+{
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -r 1 -u ($afSftVlu) -v 0;
+}
+
+global proc afSftUp()
+{
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -r 1 -u 0 -v ($afSftVlu);
+}
+
+global proc afSftDown()
+{
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -r 1 -u 0 -v (-$afSftVlu);
+}
+
+//scale UV
+global proc afScaleLowerLeft()
+{
+    //scale from lower left
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -su $afSftVlu -sv $afSftVlu -pu 0 -pv 0;
+}
+global proc afScaleLowerRight()
+{
+    //scale from lower right
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -su $afSftVlu -sv $afSftVlu -pu 1 -pv 0;
+}
+
+global proc afScaleUpperLeft()
+{
+    //scale from upper left
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -su $afSftVlu -sv $afSftVlu -pu 0 -pv 1;
+}
+global proc afScaleUpperRight()
+{
+    //scale from upper right
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -su $afSftVlu -sv $afSftVlu -pu 1 -pv 1;
+}
+global proc afScaleCenter()
+{
+    //scale from center
+    $afSftVlu = `floatField -q -v afSftVluFld`;
+    polyEditUV -su $afSftVlu -sv $afSftVlu -pu 0.5 -pv 0.5;
+}
+
+global proc afUVToolWin()
+{
+    if(`window -q -ex afShiftUVWin`)deleteUI afShiftUVWin;
+    window -s 0 -rtf 1 -mnb 0 -mxb 0 -t "af UV Shifter" afShiftUVWin;
+        columnLayout;
+            rowLayout -nc 3 -cw3 60 60 60 -cat 2 "both" 0;
+                button -w 60 -l "\\" -c "afScaleUpperLeft";
+                button -w 60 -l "Up" -c "afSftUp";
+                button -w 60 -l "/" -c "afScaleUpperRight";
+            setParent..;
+            rowLayout -nc 3;
+                button -w 60 -l "Left" -c "afSftLeft";
+                floatField -v 1 afSftVluFld;
+                button -w 60 -l "Right" -c "afSftRight";
+            setParent..;
+            rowLayout -nc 3 -cw3 60 60 60 -cat 2 "both" 0;
+                button -w 60 -l "/" -c "afScaleLowerLeft";
+                button -w 60 -l "Down" -c "afSftDown";
+                button -w 60 -l "\\" -c "afScaleLowerRight";
+            setParent..;
+            rowLayout -nc 3;
+                floatField -v 0.5 -minValue 0 -maxValue 10 -precision 4 afScaleFloatFld;
+                button -l "Uniform UV Scales" -c "af_UVRescale";
+        setParent..;
+    showWindow afShiftUVWin;
+}
