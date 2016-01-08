@@ -1,0 +1,322 @@
+/*
+cbReplacer v0.8b
+""""""""""""""""
+
+//----------------------------------------------------------
+
+What?_
+This script will replace existing transform nodes with a
+userdefined source (or sources).
+
+//----------------------------------------------------------
+
+Who?_
+Author: Christer Bjørklund
+Website: www.christerb.com
+eMail: christer@christerb
+
+Copyright ©2006 Christer Bjørklund - All Rights Reserved.
+//----------------------------------------------------------
+
+Why?_
+At work I was making a pile of fish, and i quickly made a
+static pile of about 150 individual fish. Then I animated
+5 different fishies with different movement and wanted to
+use that movement on the pile. I wrote this script, selected
+the animated fishies and replaced them as instances for the
+"big" pile to get some motion in it.
+//----------------------------------------------------------
+
+How?_
+Place the cbReplacer.mel file in your Maya scripts
+directory, source the file (or reboot Maya) and run
+
+cbReplacer();
+
+I have also included an icon for shelf usage.
+( cbReplacerShelfIcon.bmp )
+
+Shelfbutton example:
+
+source "C://Documents and Settings//userName//My Documents//maya//X.X//scripts//cbReplacer.mel";
+cbReplacer();
+//----------------------------------------------------------
+
+Information_
+
+Version(s):
+        0.8b - First release (public beta)
+
+Known issues:
+        - Everything should be working fine. I guess I could add some
+          more settings to make the script more flexible.
+
+Compability:
+        Tested and working in Maya 7.0, but should run in earlier
+        versions as well.
+
+Usage:
+        Use at your own risk. I will not stand responsible for
+        any damage caused by this script.
+
+//----------------------------------------------------------
+*/
+
+//Create Window
+global proc cbReplacer()
+{
+global string $cbREP_origObjs[];
+
+string $cbReplacerWin = "cbReplacerWin";
+
+if(`window -exists $cbReplacerWin`)
+deleteUI -window $cbReplacerWin;
+
+window -title "cbReplacer" -wh 257 370 -sizeable 0 -mb 1 $cbReplacerWin;
+           menu -label "Help";
+                menuItem -label "Help" -c ("cbREP_aboutHelp(\"help\");");
+                menuItem -divider true;
+                menuItem -label "About script" -c ("cbREP_aboutHelp(\"about\");");
+
+columnLayout -columnAttach "left" 1 -rowSpacing 3 -columnWidth 250 -adj 1;
+
+	optionMenuGrp -label "Original objects will be:" -cw 1 120 -cat 1 "right" 8 -cc ("") cbREPorigWhat;
+		menuItem -label "Deleted";
+		menuItem -label "Hidden";
+		menuItem -label "Kept";
+
+	separator -style "in" -w 165 -h 2;
+
+
+	rowColumnLayout -numberOfColumns 2 -cw 1 120 -cw 2 120;
+		checkBox -v 0 -l "Create DisplayLayer" cbREPdispLayer;
+		checkBox -v 1 -l "Instance (0 = Copy)" cbREPinstance;
+	setParent "..";
+
+	separator -style "in" -w 165 -h 2;
+frameLayout -cll 0 -l "Rotation" -bs "in";
+	columnLayout -columnAttach "left" 1 -rowSpacing 3 -columnWidth 250 -adj 1;
+		radioButtonGrp -nrb 2 -labelArray2 "Original" "Target" -cw 1 125 -cw 2 70 -sl 2 cbREPgetRot;
+			separator -style "in" -w 165 -h 2;
+		rowColumnLayout -numberOfColumns 5 -cw 1 114 -cw 2 20 -cw 3 40 -cw 4 26 -cw 5 40;
+			checkBox -v 0 -l "Random (relative)" cbREPrandRot;
+				text -l " min";
+			floatField -pre 1 -v -10 cbREPminRot;
+				text -l "  max";
+			floatField -pre 1 -v 10 cbREPmaxRot;
+		setParent "..";
+	setParent "..";
+setParent "..";
+
+frameLayout -cll 0 -l "Scale" -bs "in";
+	columnLayout -columnAttach "left" 1 -rowSpacing 3 -columnWidth 250 -adj 1;
+		radioButtonGrp -nrb 2 -labelArray2 "Original" "Target" -cw 1 125 -cw 2 70 -sl 1 cbREPgetScale;
+
+			separator -style "in" -w 165 -h 2;
+		rowColumnLayout -numberOfColumns 5 -cw 1 114 -cw 2 20 -cw 3 40 -cw 4 26 -cw 5 40;
+			checkBox -v 0 -l "Random (relative)" cbREPrandScale;
+				text -l " min";
+			floatField -pre 2 -v 0.8 cbREPminScale;
+				text -l "  max";
+			floatField -pre 2 -v 1.2 cbREPmaxScale;
+		setParent "..";
+	setParent "..";
+setParent "..";
+
+	textFieldGrp -l "Name:" -tx "" -cw 1 44 -cw 2 196 cbREPnameNew;
+
+	separator -style "in" -w 165 -h 2;
+
+	text -l " 1. Select SOURCE objects." -align "left";
+	button -l "Get Source Objects" -c ("cbREP_specify();");
+
+	separator -style "in" -w 165 -h 2;
+
+	text -l " 2. Select TARGET objects." -align "left";
+	button -w 160 -l "Do it!" -c ("cbREP_doIt()");
+
+	setParent "..";
+
+
+showWindow $cbReplacerWin;
+}
+
+global proc cbREP_specify()
+
+{
+string $cbREP_orig[] = `ls -sl -tr -l`;
+
+
+	if ( size ($cbREP_orig) == 0 )
+	{
+	confirmDialog -t "Hmmm... " -m "Please specify the objects to instance from." -b Continue;
+	return;
+	}
+
+	global string $cbREP_origObjs[];
+
+	$cbREP_origObjs = $cbREP_orig;
+}
+
+
+
+global proc cbREP_doIt()
+{
+global string $cbREP_origObjs[];
+
+string $pile[] = `ls -tr -sl -l`;
+
+	if ( size ($pile) == 0 )
+	{
+	confirmDialog -t "Hmmm... " -m "Please specify the objects to instance to." -b Continue;
+	return;
+	}
+
+int $dispLayer = `checkBox -q -v cbREPdispLayer`;
+string $newLayer;
+string $layerName;
+int $method = `checkBox -q -v cbREPinstance`;
+if ($dispLayer == 1)
+   {
+	if ($method == 0)
+	   {
+		$layerName = "copiesLayer";
+	   }
+	if ($method == 1)
+	   {
+		$layerName = "instancesLayer";
+	   }
+   $newLayer = `createDisplayLayer -name $layerName -number 1 -empty`;
+   setAttr ($newLayer + ".color") 28;
+   }
+
+
+for ($i in $pile)
+{
+string $instanceName = `textFieldGrp -q -tx cbREPnameNew`;
+	if ($i != $cbREP_origObjs[0])
+	{
+
+int $origSize = `size($cbREP_origObjs)`;
+
+int $random = `rand $origSize`;
+
+	switch ($method)
+		{
+		case 0:
+			if (size($instanceName) == 0)
+				$instanceName = ($cbREP_origObjs[$random] + "_copy");
+			$copy = `duplicate -n ($instanceName) -st $cbREP_origObjs[$random]`;
+			break;
+		case 1:
+			if (size($instanceName) == 0)
+				$instanceName = ($cbREP_origObjs[$random] + "_instance");
+			$copy = `instance -n ($instanceName) -st $cbREP_origObjs[$random]`;
+			break;
+		}
+
+	$trans = `xform -q -ws -sp $i`;
+
+int $getRotFrom = `radioButtonGrp -q -sl cbREPgetRot`;
+	switch ($getRotFrom)
+		{
+		case 1:
+			$rot = `xform -q -ws -ro $copy`;
+			break;
+		case 2:
+			$rot = `xform -q -ws -ro $i`;
+			break;
+		}
+
+int $getScaleFrom = `radioButtonGrp -q -sl cbREPgetScale`;
+	switch ($getScaleFrom)
+		{
+		case 1:
+			$scale = `xform -q -r -scale $copy`;
+			break;
+		case 2:
+			$scale = `xform -q -r -scale $i`;
+			break;
+		}
+	
+	move -a -ws -spr $trans[0] $trans[1] $trans[2] $copy;	
+	rotate -a -ws $rot[0] $rot[1] $rot[2] $copy;
+	scale -a $scale[0] $scale[1] $scale[2] $copy;
+
+
+int $randRot = `checkBox -q -v cbREPrandRot`;
+if ($randRot == 1)
+   {
+   float $rotMin = `floatField -q -v cbREPminRot`;	
+   float $rotMax = `floatField -q -v cbREPmaxRot`;
+   float $randRotVal = `rand $rotMin $rotMax`;
+
+   rotate -r $randRotVal $randRotVal $randRotVal $copy;
+   }
+
+int $randScale = `checkBox -q -v cbREPrandScale`;
+if ($randScale == 1)
+   {
+   float $scaleMin = `floatField -q -v cbREPminScale`;	
+   float $scaleMax = `floatField -q -v cbREPmaxScale`;
+   float $randScaleVal = `rand $scaleMin $scaleMax`;
+
+   scale -r $randScaleVal $randScaleVal $randScaleVal $copy;
+   }
+	
+int $origState = `optionMenuGrp -q -select cbREPorigWhat`;
+	switch ($origState)
+		   {
+    	   case 1:
+			delete $i;
+           break;
+    	   case 2:
+        	setAttr ($i + ".visibility") 0;
+           break;
+
+	}
+
+if ($dispLayer == 1)
+{
+editDisplayLayerMembers $newLayer $copy;
+}
+
+
+
+	}
+}
+select $cbREP_origObjs;
+editDisplayLayerMembers "defaultLayer" $cbREP_origObjs;
+}
+
+global proc cbREP_aboutHelp(string $cbREPaboutHelp)
+{
+switch($cbREPaboutHelp)
+      {
+      case "help":
+                  confirmDialog -t "Help."
+                               -m ("1. Select your source objects and \n"
+                                  +"   hit the Get Source Objects button.\n"
+                                  +"\n"
+                                  +"2. Select your target objects and\n"
+                                  +"   hit the Do it! button.\n"
+                                  +"\n"
+                                  +"\n"
+                                  +"Please refer to the readMe.txt file\n"
+                                  +"for further info on the settings.\n"
+                                  +" ") -b Close;
+                                  return;
+      break;
+
+      case "about":
+                  confirmDialog -t "About cbReplacer."
+                               -m ("This script will replace existing\n"
+                                  +"transform nodes with a userdefined\n"
+                                  +"source (or sources).\n"
+                                  +"\n"
+                                  +"Current version: 0.8b\n"
+                                  +" ") -b Close;
+                                  return;
+      break;
+      }
+}
