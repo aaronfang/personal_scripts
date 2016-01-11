@@ -9,14 +9,16 @@ class lineUpUVs(object):
 	def _UI(self):
 		if pm.window(self.window,exists=1):
 			pm.deleteUI(self.window)
-		self.window=pm.window(t="template window",s=1,mb=1,rtf=1,wh=(300,500))
+		self.window=pm.window(t="LineUp UVs Window",s=1,mb=1,rtf=1,wh=(300,500))
 		pm.columnLayout()
-			self.button=pm.button(l="Template Button",wh=(100,10),bc="templateFunc")
+			self.textField=pm.textField(l="Gap",text="0.003")
+			self.button=pm.button(l="lineUp Horizontaly",wh=(100,10),bc="lineUpU()")
+			self.button=pm.button(l="lineUp Verticaly",wh=(100,10),bc="lineUpV()")
 		pm.showWindow(self.window)
 
 	def lineUpU():
 		sels = pm.ls(sl=1)
-		gap = 0.003
+		gap = pm.textField(self.textField,q=True,text=True)
 		for i, x in enumerate(sels):
 			x=x.getShape()
 			pm.select('{0}.map[:]'.format(x), r=1)
@@ -30,7 +32,7 @@ class lineUpUVs(object):
 
 	def lineUpV():
 		sels = pm.ls(sl=1)
-		gap = 0.003
+		gap = pm.textField(self.textField,q=True,text=True)
 		for i, x in enumerate(sels):
 			x=x.getShape()
 			pm.select('{0}.map[:]'.format(x), r=1)
