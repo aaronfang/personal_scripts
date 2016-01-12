@@ -18,7 +18,20 @@ class lineUpUVs(object):
 		self.button=pm.button(l="U",c=self.lineUpU)
 		self.button=pm.button(l="V",c=self.lineUpV)
 		self.button=pm.button(l="UDIM",c=self.layoutUVsToUDIM)
-		pm.button(p="mainColumn",l="remember selections",c=self.selMesh)
+		
+		pm.separator(p="mainColumn",style='in')
+		pm.rowLayout(p="mainColumn",w=w,h=25,numberOfColumns=4,columnWidth4=(30,30,30,40),adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
+		self.button=pm.button(l="Scale2Src",c=self.RK_ScaleToSrc)
+		self.button=pm.button(l="G",c=self.RK_Geometric)
+		self.button=pm.button(l="O",c=self.RK_Organic)
+		self.button=pm.button(l="S",c=self.RK_Straighten)
+		
+		pm.separator(p="mainColumn",style='in')
+		pm.button(p="mainColumn",l="Transer UVs",c=self.transferUVs)
+		
+		pm.separator(p="mainColumn",style='in')
+		pm.button(p="mainColumn",l="Store Selection",c=self.selMesh)
+		
 		pm.showWindow(self.window)
 		
 	def layoutUVsToUDIM(self,*args):
@@ -56,6 +69,26 @@ class lineUpUVs(object):
 			else:
 				pm.polyEditUV(v=-buv[1][1]-(w*i+gap*(i+1)),u=-buv[0][0]+0.003)
 		pm.select(sels,r=1)
+
+	def RK_Geometric(self,*args):
+		if pm.pluginInfo("Roadkill",q=1,l=1)==False:
+			pm.loadPlugin("Roadkill")
+		pm.mel.eval("RoadkillProGeometric")
+
+	def RK_Organic(self,*args):
+		if pm.pluginInfo("Roadkill",q=1,l=1)==False:
+			pm.loadPlugin("Roadkill")
+		pm.mel.eval("RoadkillProOrganic")
+
+	def RK_Straighten(self,*args):
+		if pm.pluginInfo("Roadkill",q=1,l=1)==False:
+			pm.loadPlugin("Roadkill")
+		pm.mel.eval("RoadkillProStraighten")
+
+	def RK_ScaleToSrc(self,*args):
+		if pm.pluginInfo("Roadkill",q=1,l=1)==False:
+			pm.loadPlugin("Roadkill")
+		pm.mel.eval("RoadkillProScaleToSource")
 	
 	def selMesh(self,*args):
 		getSel = pm.ls(sl=1,fl=1)
@@ -66,5 +99,15 @@ class lineUpUVs(object):
 			self.Sels=getSel
 			print self.Sels
 
+	def transferUVs(self,*args):
+		curSel = pm.ls(sl=1,fl=1)
+		for sel in curSel:
+			pm.transferAttributes(curSel[0],sel,pos=0,nml=0,uvs=2,col=0,spa=5,sus='map1',tus='map1',sm=3,fuv=0,clb=1)
+		pm.select(curSel,r=1)
 
 lineUpUVs()._UI()
+
+curSel = pm.ls(sl=1,fl=1)
+for sel in curSel:
+	pm.transferAttributes(curSel[0],sel,pos=0,nml=0,uvs=2,col=0,spa=5,sus='map1',tus='map1',sm=3,fuv=0,clb=1)
+pm.select(curSel,r=1)
