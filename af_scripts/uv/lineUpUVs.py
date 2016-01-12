@@ -1,20 +1,34 @@
 import pymel.core as pm
 import math
 
+import pymel.core as pm
+
 class lineUpUVs(object):
 	def __init__(self):
-		self.window=""
 		pass
 	
 	def _UI(self):
-		if pm.window(self.window,exists=1):
-			pm.deleteUI(self.window)
-		self.window=pm.window(t="LineUp UVs Window",s=1,mb=1,rtf=1,wh=(300,500))
-		pm.columnLayout()
-			self.textField=pm.textField(l="Gap",text="0.003")
-			self.button=pm.button(l="lineUp Horizontaly",wh=(100,10),bc="lineUpU()")
-			self.button=pm.button(l="lineUp Verticaly",wh=(100,10),bc="lineUpV()")
+		if pm.window("lineUpWin",exists=1):
+			pm.deleteUI("lineUpWin",window=1)
+		w=180
+		self.window=pm.window("lineUpWin",t="AlignUVs",s=0,mb=1,rtf=1,wh=(w,25))
+
+		pm.columnLayout("mainColumn",p="lineUpWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
+		pm.rowLayout(p="mainColumn",w=w,h=25,numberOfColumns=4,columnWidth4=(30,30,30,40),adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
+		self.floatField=pm.floatField(v=0.003)
+		self.button=pm.button(l="U",c="lineUpU()")
+		self.button=pm.button(l="V",c="lineUpV()")
+		self.button=pm.button(l="UDIM",c="lineUpV()")
+		pm.button(p="mainColumn",l="remember selections",)
 		pm.showWindow(self.window)
+		
+	def layoutUVsToUDIM():
+		sels = pm.ls(sl=1)
+		for i, x in enumerate(sels):
+			x=x.getShape()
+			pm.select('{0}.map[:]'.format(x), r=1)
+			pm.polyEditUV(u=i % 10, v=int(math.floor(i / 10)))
+		pm.select(sels,r=1)
 
 	def lineUpU():
 		sels = pm.ls(sl=1)
