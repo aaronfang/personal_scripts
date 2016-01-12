@@ -27,10 +27,7 @@ class lineUpUVs(object):
 		self.button=pm.button(l="S",c=self.RK_Straighten)
 		
 		pm.separator(p="mainColumn",style='in')
-		pm.button(p="mainColumn",l="Transer UVs",c=self.transferUVs)
-		
-		pm.separator(p="mainColumn",style='in')
-		pm.button(p="mainColumn",l="Store Selection",c=self.selMesh)
+		pm.button(p="mainColumn",l="Store / Select",c=self.selMesh)
 		
 		pm.showWindow(self.window)
 		
@@ -99,15 +96,4 @@ class lineUpUVs(object):
 			self.Sels=getSel
 			print self.Sels
 
-	def transferUVs(self,*args):
-		curSel = pm.ls(sl=1,fl=1)
-		for sel in curSel:
-			pm.transferAttributes(curSel[0],sel,pos=0,nml=0,uvs=2,col=0,spa=5,sus='map1',tus='map1',sm=3,fuv=0,clb=1)
-		pm.select(curSel,r=1)
-
 lineUpUVs()._UI()
-
-curSel = pm.ls(sl=1,fl=1)
-for sel in curSel:
-	pm.transferAttributes(curSel[0],sel,pos=0,nml=0,uvs=2,col=0,spa=5,sus='map1',tus='map1',sm=3,fuv=0,clb=1)
-pm.select(curSel,r=1)
