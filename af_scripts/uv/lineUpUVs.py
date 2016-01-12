@@ -57,5 +57,14 @@ class lineUpUVs(object):
 			else:
 				pm.polyEditUV(v=-buv[1][1]-(w*i+gap*(i+1)),u=-buv[0][0]+gap)
 		pm.select(sels,r=1)
+	
+	def selMesh():
+		Sels=[]
+		getSel = pm.ls(sl=1,fl=1)
+		if len(getSel)==0:
+			pm.select(Sels,r=1)	
+		elif len(getSel)>=1:
+			Sels=getSel
+
 
 lineUpUVs()._UI()
