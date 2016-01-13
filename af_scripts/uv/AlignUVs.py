@@ -4,6 +4,7 @@ import math
 class lineUpUVs(object):
 	def __init__(self):
 		self.Sels=[]
+		self.W=[]
 		pass
 	
 	def _UI(self):
@@ -42,29 +43,47 @@ class lineUpUVs(object):
 	def lineUpU(self,*args):
 		sels = pm.ls(sl=1)
 		gap = pm.floatField("gapValueField",q=True,v=True)
-		for i, x in enumerate(sels):
+		
+		for x in sels:
 			x=x.getShape()
 			pm.select('{0}.map[:]'.format(x), r=1)
 			buv = pm.polyEvaluate(x,b2=1)
 			w = abs(buv[0][1] - buv[0][0])
+			self.W.append(w)
+			
+		for i, x in enumerate(sels):
+			initGap = 0.003
+			x=x.getShape()
+			pm.select('{0}.map[:]'.format(x), r=1)
+			buv = pm.polyEvaluate(x,b2=1)
 			if i==0:
-				pm.polyEditUV(u=-buv[0][0]+(gap*(i+1)),v=-buv[1][0]+0.003)
+				pm.polyEditUV(u=-buv[0][0]+initGap,v=-buv[1][0]+initGap)
 			else:
-				pm.polyEditUV(u=-buv[0][0]+(w*i+gap*(i+1)),v=-buv[1][0]+0.003)
+				width = sum(self.W[0:i])
+				pm.polyEditUV(u=-buv[0][0]+initGap+width+gap*i,v=-buv[1][0]+initGap)
 		pm.select(sels,r=1)
 
 	def lineUpV(self,*args):
 		sels = pm.ls(sl=1)
 		gap = pm.floatField("gapValueField",q=True,v=True)
-		for i, x in enumerate(sels):
+		
+		for x in sels:
 			x=x.getShape()
 			pm.select('{0}.map[:]'.format(x), r=1)
 			buv = pm.polyEvaluate(x,b2=1)
 			w = abs(buv[1][1] - buv[1][0])
+			self.W.append(w)
+			
+		for i, x in enumerate(sels):
+			initGap = 0.003
+			x=x.getShape()
+			pm.select('{0}.map[:]'.format(x), r=1)
+			buv = pm.polyEvaluate(x,b2=1)
 			if i==0:
-				pm.polyEditUV(v=-buv[1][1]-(gap*(i+1)),u=-buv[0][0]+0.003)
+				pm.polyEditUV(v=-buv[1][1]-initGap,u=-buv[0][0]+initGap)
 			else:
-				pm.polyEditUV(v=-buv[1][1]-(w*i+gap*(i+1)),u=-buv[0][0]+0.003)
+				width = sum(self.W[0:i])
+				pm.polyEditUV(v=-buv[1][1]-initGap-width-gap*i,u=-buv[0][0]+initGap)
 		pm.select(sels,r=1)
 
 	def RK_Geometric(self,*args):
