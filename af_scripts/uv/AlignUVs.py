@@ -4,6 +4,8 @@ import math
 class lineUpUVs(object):
 	def __init__(self):
 		self.Sels=[]
+		self.W=[]
+		self.H=[]
 		pass
 	
 	def _UI(self):
@@ -48,8 +50,7 @@ class lineUpUVs(object):
 			pm.select('{0}.map[:]'.format(x), r=1)
 			buv = pm.polyEvaluate(x,b2=1)
 			w = abs(buv[0][1] - buv[0][0])
-			W = []
-			W.append(w)
+			self.W.append(w)
 			
 		for i, x in enumerate(sels):
 			initGap = 0.003
@@ -59,9 +60,10 @@ class lineUpUVs(object):
 			if i==0:
 				pm.polyEditUV(u=-buv[0][0]+initGap,v=-buv[1][0]+initGap)
 			else:
-				width = sum(W[0:i])
+				width = sum(self.W[0:i])
 				pm.polyEditUV(u=-buv[0][0]+initGap+width+gap*i,v=-buv[1][0]+initGap)
 		pm.select(sels,r=1)
+		self.W=[]
 
 	def lineUpV(self,*args):
 		sels = pm.ls(sl=1)
@@ -71,9 +73,8 @@ class lineUpUVs(object):
 			x=x.getShape()
 			pm.select('{0}.map[:]'.format(x), r=1)
 			buv = pm.polyEvaluate(x,b2=1)
-			w = abs(buv[1][1] - buv[1][0])
-			W = []
-			W.append(w)
+			h = abs(buv[1][1] - buv[1][0])
+			self.H.append(h)
 			
 		for i, x in enumerate(sels):
 			initGap = 0.003
@@ -83,9 +84,10 @@ class lineUpUVs(object):
 			if i==0:
 				pm.polyEditUV(v=-buv[1][1]-initGap,u=-buv[0][0]+initGap)
 			else:
-				width = sum(W[0:i])
+				width = sum(self.H[0:i])
 				pm.polyEditUV(v=-buv[1][1]-initGap-width-gap*i,u=-buv[0][0]+initGap)
 		pm.select(sels,r=1)
+		self.H=[]
 
 	def RK_Geometric(self,*args):
 		if pm.pluginInfo("Roadkill",q=1,l=1)==False:
