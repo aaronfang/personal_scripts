@@ -1,1 +1,18 @@
-## tmp
+
+- mirror UVs
+- flip UVs
+- random split objects into n'groups
+- layout UVs by not scale them
+- reorder vertices
+- paint deformation
+- replace by source
+- attach object to curve
+- quick shader improve(proper name, lambert)
+- remember materials
+- afcheckermap remembers materials
+- in-between shape generator
+- flatten face
+- perfect circle 
+- unbevel 
+- get selection order by world space position
+- 
