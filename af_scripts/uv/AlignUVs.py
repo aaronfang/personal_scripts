@@ -6,6 +6,7 @@ class lineUpUVs(object):
 		self.Sels=[]
 		self.W=[]
 		self.H=[]
+		self.Sels=[]
 		pass
 	
 	def _UI(self):
@@ -29,8 +30,15 @@ class lineUpUVs(object):
 		self.button=pm.button(l="S",c=self.RK_Straighten)
 		
 		pm.separator(p="mainColumn",style='in')
-		pm.button(p="mainColumn",l="Store / Select",c=self.selMesh)
+		pm.button(p="mainColumn",l="Store Selection",c=self.storeSelToList)
+		pm.textScrollList("selListTextScroll",p="mainColumn",numberOfRows=15, allowMultiSelection=True)
+		pm.popupMenu("listPopUp",p="selListTextScroll")
+		pm.menuItem(p="listPopUp",l="Select All In List",c=self.selectAllInList)
+		pm.menuItem(p="listPopUp",l="Remove Selected From List",c=self.rmvSelFromList)
+		pm.menuItem(p="listPopUp",l="Remove All From List",c=self.rmvAllFromList)
 		
+		pm.button(p="mainColumn",l="Select",c=self.selectHighlightedInList)
+
 		pm.showWindow(self.window)
 		
 	def layoutUVsToUDIM(self,*args):
@@ -111,11 +119,50 @@ class lineUpUVs(object):
 	
 	def selMesh(self,*args):
 		getSel = pm.ls(sl=1,fl=1)
+		listItems = pm.textScrollList("selListTextScroll",q=1,ai=1)
+		curSelInList = pm.textScrollList("selListTextScroll",q=1,si=1)
 		if len(getSel)==0:
-			pm.select(self.Sels,r=1)
-			print self.Sels
+			if len(curSelInList)!=0:
+				pm.select(curSelInList,r=1)
+			else:
+				pm.select(listItems,r=1)
 		elif len(getSel)>=1:
 			self.Sels=getSel
-			print self.Sels
+			newList=[]
+			if len(listItems) == 0:
+				pm.textScrollList("selListTextScroll",e=1,append=self.Sels)
+			elif len(listItems) >= 1:
+					if sel not in listItems:
+						pm.textScrollList("selListTextScroll",e=1,append=sel)
+	
+	def storeSelToList(self,*args):
+		getSel = pm.ls(sl=1,fl=1)
+		listItems = pm.textScrollList("selListTextScroll",q=1,ai=1)
+		if len(getSel)>=1:
+			if len(listItems) == 0:
+				pm.textScrollList("selListTextScroll",e=1,append=getSel)
+			elif len(listItems) >= 1:
+				for sel in getSel:
+					if sel not in listItems:
+						pm.textScrollList("selListTextScroll",e=1,append=sel)
+	
+	def rmvSelFromList(self,*args):
+		curSelInList = pm.textScrollList("selListTextScroll",q=1,si=1)
+		pm.textScrollList("selListTextScroll",e=1,ri=curSelInList)
+
+	def rmvAllFromList(self,*args):
+		pm.textScrollList("selListTextScroll",e=1,ra=1)		
+
+	def selectHighlightedInList(self,*args):
+		curSelInList = pm.textScrollList("selListTextScroll",q=1,si=1)
+		listItems = pm.textScrollList("selListTextScroll",q=1,ai=1)
+		if len(curSelInList)>0:
+			pm.select(curSelInList,r=1)
+		elif len(curSelInList)==0:
+			pm.select(listItems,r=1)
+
+	def selectAllInList(self,*args):
+		listItems = pm.textScrollList("selListTextScroll",q=1,ai=1)
+		pm.textScrollList("selListTextScroll",e=1,si=listItems)
 
 lineUpUVs()._UI()
