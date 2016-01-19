@@ -104,18 +104,19 @@ class blendshapeUI(object):
 			listItems = pm.textScrollList("blendshapeList",e=1,append=bsNd)
 
 	def stripShapes(self,*args):
-		if len(self.meshWithBS) == 1:
-			bsNd = pm.textScrollList("blendshapeList",q=1,si=1)
-			if len(bsNd) == 1:
-				tgtShapes = cmds.blendShape(bsNd[0],t=1,q=1)
-				if len(tgtShapes)>0:
-					newShapeGrp = cmds.group(n=(self.meshWithBS+'_faceshapes'),em=1)
-					for tgt in tgtShapes:
-						cmds.setAttr(bsNd[0]+'.'+tgt,1)
-						newTgt = cmds.duplicate(self.meshWithBS,n=tgt)
-						cmds.parent(newTgt,newShapeGrp)
-						cmds.setAttr(bsNd[0]+'.'+tgt,0)
-					pm.select(newShapeGrp,r=1)
+		mesh = self.meshWithBS
+		bsNd = pm.textScrollList("blendshapeList",q=1,si=1)
+		if len(bsNd) == 1:
+			tgtShapes = pm.blendShape(bsNd[0],t=1,q=1)
+			if len(tgtShapes)>0:
+				newShapeGrp = pm.group(n=(mesh+'_faceshapes'),em=1)
+				for tgt in tgtShapes:
+					print tgt
+					pm.setAttr(bsNd[0]+'.'+tgt,1)
+					newTgt = pm.duplicate(mesh,n=tgt)
+					pm.parent(newTgt,newShapeGrp)
+					pm.setAttr(bsNd[0]+'.'+tgt,0)
+				pm.select(newShapeGrp,r=1)
 
 
 	
