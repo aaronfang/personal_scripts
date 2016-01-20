@@ -1,0 +1,932 @@
+//Created by Cristian Dumitriu in Nov. 2006
+//Description: Converts a poly mesh into nurbs surface(s).
+//
+//If you try to steal the code or part of it, the curse of the Romanian vampire
+//will haunt you for the next 400 years! So, don't even think about it...
+//
+//Revised by Cristian Dumitriu in Oct. 2007
+//New in this version: -mod_poly2nurbs works on multiple surfaces.
+//					   -mod_poly2nurbs converts polys to linear nurbs surfaces.
+//					   -found a better and more reliable way to snap the corners
+//					    of a cubic surf to their corner counterparts on the corespondent
+//					    poly patch. For a linear nurbs surface, all the CVs have 
+//					    to be snapped to their vtx counterparts on the corespondent 
+//					    poly patch in order to have the same shape for the resulting
+//					    linear nurbs surface. Before, the whole poly mesh was used 
+//						to do the comparison between it's verts and the CVs of each 
+//						resulting nurbs patch. Not efficient!
+//					   -the resulting nurbs patches will acquire the color from the 
+//						original poly mesh.
+//					   -mod_poly2nurbs works on polys with the same name located under
+//						different groups.
+//					   -the resulting nurbs patches are parented to the poly mesh 
+//						node for a better scene organization.
+// 
+//
+
+global proc string getEdge(string $polyMesh, string $edge, string $vtx)
+{
+	//This proc finds, selects and returns a contiguous edge.
+	
+	string $edgeFaces[1], $toksEdgeFaces[5], $initIndexFace1, 
+		   $initIndexFace2, $vtxFaces[1], $toksVtxFaces[7],
+		   $contigEdgeFaces[2], $faceEdges1[1], $faceEdges2[1],
+		   $toksFaceEdges1[7], $toksFaceEdges2[7], $contigEdge;
+	
+	//Get the two faces adjacent to the edge.
+	$edgeFaces = `polyInfo -ef $edge`; 
+	tokenize $edgeFaces[0] " " $toksEdgeFaces;
+	// Format is as: EDGE     62:      7      8 	NEWLINE 
+	// $initIndexFace1 and $initIndexFace2 are the faces that share $edge.
+	$initIndexFace1 = $toksEdgeFaces[2];
+	$initIndexFace2 = $toksEdgeFaces[3]; 
+	//Get all the faces that share $vtx.
+	$vtxFaces = `polyInfo -vf $vtx`;
+	tokenize $vtxFaces[0] " " $toksVtxFaces;
+	// Format is as: VERTEX      8:      7      1      2      8 	NEWLINE 
+	//Get the other two faces that don't share $edge. These two faces share the contiguous edge.
+	for ($i = 2; $i < (size ($toksVtxFaces) - 1); $i++) 
+	{
+		if (($toksVtxFaces[$i] != $initIndexFace1) && ($toksVtxFaces[$i] != $initIndexFace2))
+			//Store the two faces that share the contiguous edge.
+			$contigEdgeFaces[size ($contigEdgeFaces)] = $polyMesh + ".f[" + $toksVtxFaces[$i] + "]"; 
+	}
+	//Get all the edges of the first face in $contigEdgeFaces.
+	$faceEdges1 = `polyInfo -fe $contigEdgeFaces[0]`;
+	tokenize $faceEdges1[0] " " $toksFaceEdges1;
+	// Format is as: FACE      1:      1     56      7     55		NEWLINE	
+	//Get all the edges of the second face in $contigEdgeFaces.
+	$faceEdges2 = `polyInfo -fe $contigEdgeFaces[1]`;
+	tokenize $faceEdges2[0] " " $toksFaceEdges2;
+	// Format is as: FACE      2:      2     57      8     56		NEWLINE
+	for ($j = 2; $j < (size ($toksFaceEdges1) - 1); $j++) //Loop through all the edges of the first face.
+	{
+		for ($k = 2; $k < (size ($toksFaceEdges2) - 1); $k++) //Loop through all the edges of the second face.
+		{
+			if ($toksFaceEdges2[$k] == $toksFaceEdges1[$j]) //The shared edge was found and this is the 
+															//contiguous one. Brake the loop.
+			{
+				$contigEdge = $polyMesh + ".e[" + $toksFaceEdges2[$k] + "]";
+				break;
+			}
+		}
+	}
+	select -add $contigEdge;
+	clear $contigEdgeFaces;
+	return $contigEdge;	
+}
+
+
+global proc string[] mod_poly2nurbs(int $degree)    
+{
+
+    //Main proc. This proc converts a poly mesh into nurbs surface(s).
+	//$degree represents the degree of nurbs surface after convertion.
+	//If $degree == 3, resulting surf is cubic.
+	//If $degree == 1, resulting surf is linear.
+	
+	string $polySel[1], $vertEdges[1], $toksVtxEdges[35], $toksEdgeVerts[5], 
+		   $troubleVerts[], $initEdges[], $crntEdge, $edgeVerts[1], $vtx1, $vtx2, $contigEdge, 
+		   $finalEdges[], $faceEdges[1], $toksFaceEdges[7], $patchFirstFace, $freeEdge, 
+		   $edgeFaces[1], $toksEdgeFaces[5], $contigFace, $seenFaces[], $adjacentFaces[], 
+		   $patchFaces[], $newAdjacentFaces[], $polyDup[1], $polyPatches[], $crntPolyPatch, 
+		   $subd[1], $nurbsGroup[1], $nurbsPatch, $cv1, $cv2, $cv3, $cv4, $CVsToBeSnapped[], 
+		   $polyVerts[], $troublePolyPatches[], $borderVerts[], $polyEdges[], $borderEdges[], 
+		   $tempEdges[], $seenVerts[], $crntPoly, $noPathName[10], $crntPolyShape[1], 
+		   $nurbsChild[1], $newLoc[1], $shader[1];
+        string $nurbsPatches[];
+	int $polyVtxNum[1], $foundVtx1, $foundVtx2, $polyFaceNum[1], $foundFace, $foundEdge, 
+		$foundPatchFace, $spansU, $spansV, $newSpansU, $newSpansV, $polyPatchFaceNum[1],
+		$polyPatchEdgeNum[1], $polyEdgeNum[1], $polyPatchTriangleNum[1], $switch, $crntPolyVtxNum[1];
+	float $startTime, $mag1, $mag2, $elapsed;
+	vector $vtxPosVec[], $movePointVec, $cvPosVec, $tempVec, $diffVec1, $diffVec2;
+	
+	$startTime = `timerX`; //Set the start time.
+	
+	//===============================================================
+	//The following section is about getting the selection of edges
+	//that delimitate the poly patches that will be cut and converted
+	//into subd patches and then into nurbs patches.
+	//===============================================================
+	
+	// Get the poly selection.
+    $polySel = `filterExpand -expand true -selectionMask 12`;
+    
+	for ($crntPoly in $polySel)
+	{
+		//Get the shape node. It has to be removed later to turn $crntPoly node into an empty group.
+		//All the resulting nurbs surfaces will be parented to this empty group. 
+		//This way, I can organize the scene.
+		$crntPolyShape = `listRelatives -shapes -path $crntPoly`;
+		/*Because the shape node outputs to the shader node, listConnections command 
+		can be used to get the name of the shader asigned to the poly mesh. This shader
+		will be assigned to the resulting nurbs patch later.*/
+		$shader = `listConnections -source false $crntPolyShape[0]`;
+		// Get # of verts, then go through each
+    	$polyVtxNum = `polyEvaluate -v $crntPoly`;
+		for($i = 0; $i < $polyVtxNum[0]; $i++) //$polyVtxNum[0] represents the # of verts.
+			$polyVerts[size ($polyVerts)] = $crntPoly + ".vtx[" + $i + "]";
+
+		// Get # of edges, then go through each.
+    	$polyEdgeNum = `polyEvaluate -e $crntPoly`;
+		for($i = 0; $i < $polyEdgeNum[0]; $i++) //$polyEdgeNum[0] represents the # of edges.
+			$polyEdges[size ($polyEdges)] = $crntPoly + ".e[" + $i + "]"; //Store all the edges.
+
+		select -replace $polyVerts;
+		//Select only border verts and store them in a string array.
+		polySelectConstraint -mode 2 -type 0x0001 -where 1;
+		$borderVerts = `filterExpand -expand true -selectionMask 31`;
+		polySelectConstraint -mode 0 -where 0; //No constrain (reset).
+		select -replace $polyEdges;
+		//Select only border edges and store them in a string array.
+		polySelectConstraint -mode 2 -type 0x8000 -where 1;
+		$borderEdges = `filterExpand -expand true -selectionMask 32`;
+		polySelectConstraint -mode 0 -where 0; //No constrain (reset).	
+
+		for ($i = 0; $i < size ($polyVerts); $i++)
+		{
+			// Get the edges merging at $polyVerts[$i].
+			$vertEdges = `polyInfo -ve $polyVerts[$i]`;
+			tokenize $vertEdges[0] " " $toksVtxEdges;
+			// Format is as: VERTEX 	5:		65		5		45		4		NEWLINE
+			$switch = 0; //Initialize $switch to 0. $polyVerts[$i] was not found between $borderVerts.
+			for ($j = 0; $j < size ($borderVerts); $j++)
+			{
+				if ($polyVerts[$i] == $borderVerts[$j])
+				{
+					$switch = 1; //$polyVerts[$i] was found between $borderVerts.
+					break;
+				}
+			}
+			//$polyVerts[$i] is a border vtx and its # of edges is diff. then 2 and 3 or
+			//$polyVerts[$i] is not a border vtx and its # of edges is diff. then 4.
+			if ((($switch) && (size ($toksVtxEdges) >= (3 + 4))) ||
+				((!$switch) && (size ($toksVtxEdges) != (3 + 4))))
+				$troubleVerts[size ($troubleVerts)] = $polyVerts[$i];
+		}
+
+		select -replace $troubleVerts;
+		ConvertSelectionToEdges; //Get the edges that converge at the trouble verts.
+		$tempEdges = `filterExpand -expand true -selectionMask 32`; //Store edges in a temp. array.
+		//Go through each edge in $tempEdges and see if it is a border edge.
+		//If yes, then deselect it. 
+		for ($i = 0; $i < size ($tempEdges); $i++)
+		{
+			for ($j = 0; $j < size ($borderEdges); $j++)
+			{
+				if ($tempEdges[$i] == $borderEdges[$j])
+				{
+					select -deselect $tempEdges[$i];
+					break;
+				}
+			}
+		}
+		//Store in a string array all the converging edges at the trouble verts except the border ones.
+		$initEdges = `filterExpand -expand true -selectionMask 32`;
+
+		//Put together border verts and trouble verts in a string array.
+		//We may have duplicates in the resulting string array (some of 
+		//the border verts may be trouble verts), but they are not too 
+		//many. Usually trouble verts on borders don't not come across too 
+		//often. I could do a "stringArrayRemoveDuplicates" but it slows
+		//down the tool more than just looping through all the verts 
+		//in $seenVerts including few duplicates.
+		//We will not select contiguous edges on borders from these verts.
+		$seenVerts = stringArrayCatenate ($troubleVerts, $borderVerts);
+		for ($crntEdge in $initEdges) //Loop through all the selected edges.
+		{
+			//Next, initialize $contigEdge to the first edge in $initEdges. From this edge, 
+			//all the contiguous edges will be selected until a vtx that is in $seenVerts 
+			//will be met. The selection will start at that end of the edge which has 
+			//a vtx that is not in $seenVerts.
+			$contigEdge = $crntEdge;						
+
+			do //Find and select one contiguous edge after another, in a loop, while the condition is met. 
+			{
+				$edgeVerts = `polyInfo -ev $contigEdge`; //Get the head and tail verts of the edge.
+				tokenize $edgeVerts[0] " " $toksEdgeVerts;
+				// Format is as: EDGE		47: 	47		42		NEWLINE
+				$vtx1 = $crntPoly + ".vtx[" + $toksEdgeVerts[2] + "]";
+				$vtx2 = $crntPoly + ".vtx[" + $toksEdgeVerts[3] + "]";
+				$foundVtx1 = 0; //Initialize $foundVtx1 to zero. That means $vtx1 was not found in $seenVerts. 
+				$foundVtx2 = 0; //Initialize $foundVtx2 to zero. That means $vtx2 was not found in $seenVerts.
+				for ($crntVtx in $seenVerts) //See if $vtx1 and $vtx2 are found in $seenVerts.
+				{
+					if ($vtx1 == $crntVtx)
+						$foundVtx1 = 1; //$vtx1 was found in $seenVerts and will be skipped.
+					else if ($vtx2 == $crntVtx)
+						$foundVtx2 = 1; //$vtx2 was found in $seenVerts and will be skipped.
+				}
+
+				if ((!$foundVtx1) && ($foundVtx2)) //$vtx1 was not found. $vtx2 was found.
+				{
+					$contigEdge = getEdge($crntPoly, $contigEdge, $vtx1); //Get and select the contiguous edge.
+					$seenVerts[size ($seenVerts)] = $vtx1; //$vtx1 was seen and put it in the string array where all 
+															   //the seen verts are. $vtx1 shouldn't be seen again.
+				}
+				else if (($foundVtx1) && (!$foundVtx2)) //$vtx1 was found. $vtx2 was not found.
+				{
+					$contigEdge = getEdge($crntPoly, $contigEdge, $vtx2); //Get and select the contiguous edge.
+					$seenVerts[size ($seenVerts)] = $vtx2; //$vtx2 was seen and put it in the string array where all 
+															   //the seen verts are. $vtx2 shouldn't be seen again.
+				}
+			}
+			//This condition has to be met in order to continue selecting contiguous edges. 
+			//When is not met, the selection stops.
+			while (((!$foundVtx1) && ($foundVtx2)) || (($foundVtx1) && (!$foundVtx2))); 
+		}
+
+		//=============================================================
+		//The following section is about getting the poly patch layout. 
+		//=============================================================
+
+		//Add the border edges to the initial selection to get the entire selection of
+		//edges that delimitate the poly patches. These edges are going to be used to 
+		//break the poly mesh. 
+		//Eventually, the resulting poly patches will become nurbs patches.
+		select -add $borderEdges;
+		$finalEdges = `filterExpand -expand true -selectionMask 32`;
+		// Get # of faces, then go through each.
+    	$polyFaceNum = `polyEvaluate -f $crntPoly`;
+
+		for ($i = 0; $i < $polyFaceNum[0]; $i++) //$polyFaceNum[0] represents the # of faces.
+    	{
+			//$patchFirstFace is considered the first face in a poly patch.
+			$patchFirstFace = $crntPoly + ".f[" + $i + "]";
+			$foundFace = 0; //Initialize $foundFace to zero. No face found.	
+			//Loop through all the faces that have already been seen. First time around size ($seenFaces) = 0. 
+			for ($m = 0; $m < size ($seenFaces); $m++) 
+			{
+				if ($patchFirstFace == $seenFaces[$m]) 
+				{
+					$foundFace = 1; //$patchFirstFace has already been seen and break the loop. Move to the next face. 
+					break;
+				}	
+			}
+			if (!$foundFace) //$patchFirstFace has not been seen.
+			{
+				$seenFaces[size ($seenFaces)] = $patchFirstFace; //Put $patchFirstFace in a string array.
+				$adjacentFaces[size ($adjacentFaces)] = $patchFirstFace; //These are the faces adjacent to $patchFirstFace.
+																		 //First time around, the first element in 
+																		 //$adfacentFaces is $patchFirstFace.
+				$patchFaces[size ($patchFaces)] = $patchFirstFace; //Contains all the faces in a closed area which is a 
+																   //poly patch. All the contiguous faces surrounded by 
+																   //the selected edges from $finalEdges.
+				do //An entire patch. //Get all the faces partaining to one poly patch.
+				{
+					for ($n = 0; $n < size ($adjacentFaces); $n++) //Loop through the adjacent faces. 
+					{
+						// Get the face's edges.
+						$faceEdges = `polyInfo -fe $adjacentFaces[$n]`;
+						tokenize $faceEdges[0] " " $toksFaceEdges;
+						// Format is as: FACE      7:     27     28     19     29		NEWLINE
+						for ($j = 2; $j < (size ($toksFaceEdges) - 1); $j++)
+						{
+							$freeEdge = $crntPoly + ".e[" + $toksFaceEdges[$j] + "]";
+							$foundEdge = 0; //Initialize $foundEdge to zero assuming that $freeEdge is not in $finalEdges.
+							for ($k = 0; $k < size ($finalEdges); $k++)
+							{
+								if ($freeEdge == $finalEdges[$k])
+								{
+									$foundEdge = 1; //$freeEdge is in $finalEdges. Break the loop and go to the next edge.
+									break;
+								}	
+							}
+							if (!$foundEdge) //$freeEdge is not in $finalEdges.
+							{
+								// Get the faces that share $freeEdge and loop through each.
+								$edgeFaces = `polyInfo -ef $freeEdge`;
+								tokenize $edgeFaces[0] " " $toksEdgeFaces;
+								// Format is as: EDGE		36: 	34		28		NEWLINE
+								for ($l = 2; $l < (size ($toksEdgeFaces) - 1); $l++)
+								{
+									$contigFace = $crntPoly + ".f[" + $toksEdgeFaces[$l] + "]";
+									$foundPatchFace = 0; //Assuming that $contigFace is not part of $patchFaces.
+									for ($p = 0; $p < size ($patchFaces); $p++) 											
+									{
+										if ($contigFace == $patchFaces[$p])
+										{
+											$foundPatchFace = 1; //$contigFace is in $patchFaces and break the loop.
+											break;
+										}
+									}
+									if (!$foundPatchFace) //$contigFace is not part of $patchFaces.
+									{
+										//$newAdjacentFaces contains the faces adjacent to the faces from $adjacentFaces. 
+										$newAdjacentFaces[size ($newAdjacentFaces)] = $contigFace; 
+										$patchFaces[size ($patchFaces)] = $contigFace;
+										$seenFaces[size ($seenFaces)] = $contigFace;
+									}
+								}
+							}
+						}
+					}
+					clear $adjacentFaces;
+					$adjacentFaces = $newAdjacentFaces; //Set $adjacentFaces to be $newAdjacentFaces. 
+					clear $newAdjacentFaces;
+				}
+				while (size ($adjacentFaces) > 0);
+
+				$polyDup = `duplicate $crntPoly`; //Duplicate the poly mesh for renaming purpose.
+				select -replace $patchFaces; //Select all the patch faces.
+				InvertSelection; //Select all the other faces of $crntPoly but $patchFaces.
+				delete; //Delete all the other faces of $crntPoly but $patchFaces.				
+				tokenize $crntPoly "|" $noPathName; //Get the clean name of $crntPoly (no path). It is for renaming purpose.
+				//Rename $crntPoly to a different name to be able to give 
+				//the duplicate poly mesh the initial name of $crntPoly.
+				$polyPatches[size ($polyPatches)] = `rename $crntPoly "mesh#"`; 
+				rename $polyDup[0] $noPathName[size ($noPathName) - 1]; //Rename the duplicate poly mesh to the original name of $crntPoly.
+				//Clear $patchFaces because it will take a new set of faces 
+				//with the next $patchFirstFace being the first element.
+				clear $patchFaces;
+    		}
+		}
+
+		//==============================================================
+		//The following section is about converting all the poly patches
+		//into subd patches and then into nurbs patches.
+		//==============================================================
+
+		for ($crntPolyPatch in $polyPatches)
+		{
+                    int $meshClosedType = mod_poly2nurbs.getMeshClosedType($crntPolyPatch);
+                    
+                    if ($meshClosedType) {
+                        mod_poly2nurbs.openMesh($crntPolyPatch, $degree);
+                    }
+			//Get the # of faces of each poly patch.
+			$polyPatchFaceNum = `polyEvaluate -f $crntPolyPatch`;
+			//Get the # of edges of each poly patch.
+			$polyPatchEdgeNum = `polyEvaluate -e $crntPolyPatch`;
+			//Get the # of verts of each poly patch.
+			$polyPatchTriangleNum = `polyEvaluate -t $crntPolyPatch`;
+
+			//A poly patch is not suitable for conversion into nurbs if:
+			//- it consists of only one face and this is not a quad.
+			//- the # of triangles is odd.
+			if (($polyPatchFaceNum[0] == 1) && ($polyPatchEdgeNum[0] != 4) ||
+				((ceil ($polyPatchTriangleNum[0] / 2.0)) != ($polyPatchTriangleNum[0] / 2.0)))
+				$troublePolyPatches[size ($troublePolyPatches)] = $crntPolyPatch;
+			else
+			{
+				//Get # of verts of $crntPolyPatch and then get the positions of all the verts. 
+    			$crntPolyVtxNum = `polyEvaluate -v $crntPolyPatch`;
+				for ($i = 0; $i < $crntPolyVtxNum[0]; $i++) //$crntPolyVtxNum[0] represents the # of verts.
+					$vtxPosVec[size ($vtxPosVec)] = pointPosition ($crntPolyPatch + ".vtx[" + $i + "]");
+				
+				$subd = `polyToSubdiv -ch off -maxPolyCount 10000  -maxEdgesPerVert 32 $crntPolyPatch`;
+				delete $crntPolyPatch; //Remove poly patch.
+				$nurbsGroup = `subdToNurbs -ch off -outputType 0 $subd[0]`;
+				delete $subd[0]; //Remove subd surf.
+				$nurbsChild = `listRelatives -children -path $nurbsGroup[0]`; //Get the nurbs patch under subdToNurbsShape group.
+				$newLoc = `parent $nurbsChild[0] $crntPoly`; //Place the nurbs patch under $crntPoly node to organize the scene. 
+				delete $nurbsGroup[0]; //Delete the remaining subdToNurbsShape node.
+				$nurbsPatch = `rename $newLoc[0] "patch#"`; 
+                                $nurbsPatches[size($nurbsPatches)] = $nurbsPatch;
+				//Asign the shader of the $crntPoly mesh to the nurbs surface, if it's different than "initialShadingGroup".
+				if ($shader[0] != "initialShadingGroup")
+					sets -edit -forceElement $shader[0] $nurbsPatch;
+				$spansU = getAttr ($nurbsPatch + ".spansU"); //span # on U of $nurbsPatch. 
+				$spansV = getAttr ($nurbsPatch + ".spansV"); //span # on V of $nurbsPatch. 
+				//To have a nurbs patch with the same # of spans like $crntPolyPatch, we have to subtract 4 spans
+				//from newly created nurbs patch and then to divide the # of remaining spans by 2. The new nurbs
+				//patch is rebuilt in the 0-1 range.
+				rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -endKnots 1 
+							   -keepRange 0 -keepControlPoints 0 -keepCorners 0 -spansU (($spansU - 4) * 0.5)
+							   -degreeU $degree -spansV (($spansV - 4) * 0.5) -degreeV $degree -tolerance 0.01 
+							   -fitRebuild 0 -direction 2 $nurbsPatch;
+
+				$newSpansU = getAttr ($nurbsPatch + ".spansU"); //span # on U of $nurbsPatch after rebuilding it. 
+				$newSpansV = getAttr ($nurbsPatch + ".spansV"); //span # on V of $nurbsPatch after rebuilding it. 
+				//After converting a poly patch to subd and from subd to nurbs, the corners of the nurbs patch are round.
+				//We are going to move every corner CVs of a nurbs patch back to its coresponding vtx on the poly mesh.
+				//Get the four corner CVs of the nurbs patch.
+				
+				if ($degree == 3) //The resulting nurbs patch is cubic. 
+				{
+					//Get the corner CVs. 
+					//I need to snap only the corners to the original location of their poly corners counterparts.
+					$cv1 = $nurbsPatch + ".cv[0][0]";
+					$cv2 = $nurbsPatch + ".cv[" + ($newSpansU + 2) + "][0]";
+					$cv3 = $nurbsPatch + ".cv[0][" + ($newSpansV + 2) + "]";
+					$cv4 = $nurbsPatch + ".cv[" + ($newSpansU + 2) + "][" + ($newSpansV + 2) + "]";
+					$CVsToBeSnapped = {$cv1, $cv2, $cv3, $cv4}; //put the corner CVs in a string array.
+				}
+				else //The resulting nurbs patch is linear.
+				{
+					//Get all the CVs of the nurbs patch in U-dominant order (the order doesn't matter).
+					//All of them have to be snapped to the original location of their poly vtx counterparts.
+					for ($i = 0; $i <= $newSpansV; $i++)
+					{
+						for ($j = 0; $j <= $newSpansU; $j++) 
+							$CVsToBeSnapped[size ($CVsToBeSnapped)] = $nurbsPatch + ".cv[" + $j + "][" + $i + "]";
+					}
+				}
+				
+				for ($i = 0; $i < size ($CVsToBeSnapped); $i++) //Loop through all CVs.
+				{
+					//Initialize $cvPosVec to the pos in space of the first CV.
+					$cvPosVec = `pointPosition $CVsToBeSnapped[$i]`;
+					//Initialize $movePointVec to the virst vec in $vtxPosVec.
+					//This represents the point in space that the corner CV has to be moved to.
+					$movePointVec = $vtxPosVec[0];
+					//Get the difference vector between $movePointVec and $cvPosVec. 
+					$diffVec1 = $movePointVec - $cvPosVec;
+					$mag1 = $diffVec1; //Get the magnitude of $diffVec1.
+					for ($j = 1; $j < size ($vtxPosVec); $j++) //Loop through all positions in $vtxPosVec.
+					{
+						//Initialize $tempVec to $vtxPosVec[$j]. 
+						//$tempVec is a temporary vec that will be compared to $cvPosVec.
+						$tempVec = $vtxPosVec[$j]; 
+						//Get the difference vec between $tempVec and $cvPosVec.
+						$diffVec2 = $tempVec - $cvPosVec;
+						$mag2 = $diffVec2; //Get the magnitude of $diffVec2.
+						if ($mag2 < $mag1)
+						{
+							$movePointVec = $tempVec; //$tempVec becomes $movePointVec.
+							$mag1 = $mag2; //$mag2 becomes $mag1.
+						}
+					}
+					move -absolute ($movePointVec.x) ($movePointVec.y) ($movePointVec.z) $CVsToBeSnapped[$i];
+				}
+			}
+			clear $CVsToBeSnapped $vtxPosVec;
+                        if ($meshClosedType) {
+                            mod_poly2nurbs.closeSurface($nurbsPatch, $degree,
+                                                        $meshClosedType);
+                        }
+		}
+		//Delete the shape node of the original poly mesh. 
+		//Now the $crntPoly is a group that contains all the nurbs patches that resulted after conversion.
+		delete $crntPolyShape[0];
+		clear $polyVerts $polyEdges $troubleVerts $seenVerts $seenFaces $adjacentFaces $patchFaces $newAdjacentFaces $polyPatches;
+	}
+	
+	select -clear;
+	$elapsed = `timerX -startTime $startTime`; //Get the execution time.
+	print ("Execution Time = " + $elapsed + " seconds\n");	
+	if (size ($troublePolyPatches))
+	{
+		select -replace $troublePolyPatches; //Select all the poly faces that couldn't be converted for a visual clue.
+		confirmDialog -title "Warning!" -parent "MayaWindow" -message "Selected poly patches cannot be converted into nurbs\nbecause they have at least one face that is not a quad!" -button "Ok";
+	}
+        return $nurbsPatches;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Extra utils for "opening" a continous poly surface, nurbsifying it, then
+// closing the resulting nurbs surface to achieve the true nurbs version of
+// the original poly.
+//
+// We actually end up having to open and close polys and nurbs differently
+// depending on if we're diong a linear or cubic conversion.  Completely closed
+// surfaces (e.g. toruses) are not supported.
+////////////////////////////////////////////////////////////////////////////////
+
+///
+// Returns true iff the given $mesh is open.  This assumes the mesh is laid
+// out like a nurbs surface (in a quad grid).
+// Returns...
+// 0 if mesh is open.
+// 1 if mesh is closed in one direction.
+// 2 if mesh is closed in two directions.
+//
+global proc int mod_poly2nurbs.getMeshClosedType(string $mesh) {
+
+
+    string $selected[] = `ls -sl`;
+    string $hilited[] = `ls -hilite`;
+
+    // Select a single border vert and find the edge loops for that
+    // 
+    string $borderVerts[] = mod_poly2nurbs.getAllBorderVerts($mesh);
+    
+    // If there ARE no border vertices, the mesh is closed in 2 directions.
+    // 
+    if(!size($borderVerts)) {
+        return 2;
+    }
+
+    $borderVerts = `ls -flatten $borderVerts`;
+    string $borderVert = $borderVerts[0];
+
+    select $borderVert;
+
+    SelectEdgeLoop;
+
+    string $loopVerts[] = `polyListComponentConversion -toVertex`;
+
+    string $loopVertsSet = mod_poly2nurbs.createSet("edgeLoopSet", $loopVerts);
+    
+    // Test whether or not the entire set of border verts is in the
+    // verts in the edgeloops we just 
+    int $entireBorderIsInEdgeLoop = 
+        `sets -isMember $loopVertsSet $borderVerts`;
+    
+    delete $loopVertsSet;
+    
+    select -r $selected;
+    hilite $hilited;
+
+    return !$entireBorderIsInEdgeLoop;
+}
+
+///
+// Given a mesh: see if it's "closed" in one direction, and if so, open it.
+//
+global proc mod_poly2nurbs.openMesh(string $mesh, int $degree) {
+
+    if($degree == 1) {
+        mod_poly2nurbs.openMeshLinear($mesh);
+    } else if($degree == 3) {
+        mod_poly2nurbs.openMeshCubic($mesh);
+    } else {
+        error("mod_poly2nurbs.openMesh: " + 
+              "$degree must be 1 for linear or 3 for cubic.");
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Opening a fully closed surface
+///////////////////////////////////////////////////////////////////////////////
+
+///
+// If a surface is fully closed, we need to split it twice.  The first split
+// doesn't actually matter that much, so we'll just split along whatever the
+// edge loop of the first edge is.
+// 
+
+///
+// 
+//
+
+///////////////////////////////////////////////////////////////////////////////
+// Cubic opening
+///////////////////////////////////////////////////////////////////////////////
+
+///
+// Open a mesh that is going to be converted to a linear surface.
+// (these deletes a row of faces in order to open the surface.
+//
+global proc mod_poly2nurbs.openMeshCubic(string $mesh) {
+
+
+    string $selection[] = `ls -sl`;
+
+    // If mesh is closed in both directions, open up one arbitrary edge loop
+    // first.
+    // 
+    int $closedType = mod_poly2nurbs.getMeshClosedType($mesh);
+    if($closedType == 2) {
+        string $firstEdgeLoop[] =
+            `polySelect -edgeLoop 0 -noSelection -asSelectString $mesh`;
+
+        mod_poly2nurbs.detachEdges($firstEdgeLoop);
+        
+    }
+
+    // Pick a border vertex $v and find all edges on its border.
+    // 
+    string $borderVerts[] = `mod_poly2nurbs.getAllBorderVerts($mesh)`;
+    
+    $borderVerts = `ls -flatten $borderVerts`;
+
+    string $v = $borderVerts[0];
+    string $vArr[] = mod_poly2nurbs.get2AdjacentBorderVerts($mesh);
+
+
+    string $borderEdgeSet = mod_poly2nurbs.getBorderEdgesSetForVert($v);
+    
+    // Get the edges in the edge loops for $v
+    // 
+    select $v;
+
+    SelectEdgeLoop;
+
+    string $edgeLoopSet = `sets -name "edgeLoopSet"`;
+    
+    string $loopToCut[] = `sets -subtract $edgeLoopSet $borderEdgeSet`;
+
+    mod_poly2nurbs.detachEdges($loopToCut);
+
+    delete $borderEdgeSet $edgeLoopSet;
+
+    select $selection;
+}
+
+
+///
+// Delete the given edges.  Will offset your edges verrrry slightly (0.0001)
+//
+global proc mod_poly2nurbs.detachEdges(string $edges[]) {
+
+
+    polyDuplicateEdge -ch on -of 0.0001 $edges;
+
+    string $facesToDelete[] = `polyListComponentConversion -toFace $edges`;
+
+    delete $facesToDelete;
+ 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Linear Opening
+////////////////////////////////////////////////////////////////////////////////
+
+///
+// Open a mesh that is going to be converted to a linear surface.
+// (these deletes a row of faces in order to open the surface.
+//
+global proc mod_poly2nurbs.openMeshLinear(string $mesh) {
+
+    string $selection[] = `ls -sl`;
+
+    int $meshClosedType = mod_poly2nurbs.getMeshClosedType($mesh);
+
+    if($meshClosedType == 0) {
+
+        return;
+
+    }
+    // If mesh is closed in one or two directions, we need to kill face loops.
+    // 
+    else if($meshClosedType == 1){
+
+        string $borderEdges[] = mod_poly2nurbs.getAllBorderEdges($mesh);
+        
+        $borderEdges = `ls -fl $borderEdges`;
+        
+        select -r $borderEdges[0];
+        
+    }
+    
+    // if mesh is closed is both directions, pick an arbitrary edge.
+    // 
+    else if($meshClosedType == 2) {
+
+        select -r ($mesh + ".f[0]");
+
+    }
+
+    SelectFacePath;
+
+    delete `ls -sl`;
+    
+    select $selection;
+}
+
+///
+// Return a string array of two adjacent border verts on the mesh.
+// 
+global proc string[] mod_poly2nurbs.get2AdjacentBorderVerts(string $mesh) {
+
+    
+    string $borderEdges[] = mod_poly2nurbs.getAllBorderEdges($mesh);
+    $borderEdges = `ls -fl $borderEdges`;
+
+    return `polyListComponentConversion -toVertex $borderEdges[0]`;
+    
+}
+
+///
+// Return a set containing the border edges connected to our vertex.
+//
+global proc string mod_poly2nurbs.getBorderEdgesSetForVert(string $v) {
+
+    
+    int $vIndex = mod_poly2nurbs.getComponentIndex($v);
+
+    string $meshArr[] = stringToStringArray($v, ".");
+    string $mesh = $meshArr[0];
+
+    string $neighborEdges[] = `polyListComponentConversion -toEdge $v`;
+
+    string $borderEdges[] = mod_poly2nurbs.getAllBorderEdges($mesh);
+
+    string $allBorderEdgesSet = mod_poly2nurbs.createSet("allBorderEdgeSet",
+                                                         $borderEdges);
+    string $borderEdge;
+
+    // Find a neighboring edge that lies on the border with our vertex.
+    for($neighborEdge in $neighborEdges) {
+        if(`sets -isMember $allBorderEdgesSet $neighborEdge`) {
+            $borderEdge = $neighborEdge;
+            break;
+        }
+    }
+
+    int $eIndex = mod_poly2nurbs.getComponentIndex($borderEdge);
+    
+    string $eBorder[] = `polySelect -edgeBorder $eIndex -noSelection
+        -asSelectString $mesh`;
+
+    string $set = mod_poly2nurbs.createSet("borderEdgeSet", $eBorder);
+
+    delete $allBorderEdgesSet;
+
+    return $set;
+
+}
+
+///
+// Return the int index of the given component.
+//
+global proc int mod_poly2nurbs.getComponentIndex(string $component) {
+
+    
+    string $arr[] = stringToStringArray($component, "[]");
+    return $arr[1];
+}
+
+///
+// Return a string array of the border vertices of $mesh.
+//
+global proc string[] mod_poly2nurbs.getAllBorderVerts(string $mesh) {
+
+    
+    string $sl[] = `ls -sl`;
+
+    string $verts[] = `polyListComponentConversion -toVertex $mesh`;
+
+    select $verts;
+
+    SelectPolygonSelectionBoundary;
+    
+    string $borderVerts[] = `ls -sl`;
+
+    select $sl;
+    
+    return $borderVerts;
+}
+
+///
+// Return a string array of the border vertices of $mesh.
+//
+global proc string[] mod_poly2nurbs.getAllBorderEdges(string $mesh) {
+
+    
+    string $sl[] = `ls -sl`;
+
+    string $edges[] = `polyListComponentConversion -toEdge $mesh`;
+
+    select $edges;
+
+    SelectPolygonSelectionBoundary;
+    
+    string $borderEdges[] = `ls -sl`;
+
+    select $sl;
+    
+    return $borderEdges;
+}
+
+///
+// Create a set named $setName with the given elements.
+//
+global proc string  mod_poly2nurbs.createSet(string $setName, string $items[]) {
+
+    
+    $setName = `sets -empty -name $setName`;
+
+    sets -e -forceElement $setName $items;
+
+    return $setName;
+    
+}
+
+
+///
+// Given a string array, return the $ith index
+//
+global proc string  mod_poly2nurbs.stringIndex(int $i, string $arr[]) {
+
+    return $arr[$i];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Closing Surfaces
+////////////////////////////////////////////////////////////////////////////////
+
+///
+// Given a surface we know needs to be closed, close it.
+// 
+global proc mod_poly2nurbs.closeSurface(string $surface, int $degree,
+                                        int $numDirections) {
+
+    int $directions[];
+    if($numDirections == 2) {
+        $directions = {0,1};
+    } else {
+        int $tempDirection = mod_poly2nurbs.closeDirection($surface);
+        $directions = { $tempDirection };
+    }
+    
+    for($direction in $directions) {
+        if($degree == 1) {
+     
+            closeSurface -ch 0 -direction $direction
+                -preserveShape 0
+                -blendKnotInsertion 0
+                -replaceOriginal 1
+                $surface;
+
+        } else if($degree == 3) {
+
+            closeSurface -ch 0 -direction $direction
+                -preserveShape 2 -blendBias 0
+                -blendKnotInsertion 0
+                -replaceOriginal 1
+                $surface;
+
+        }
+    }
+}
+
+///
+// Given a nurbs surface which we want to close in one direction, determine
+// if u or v is the correct direction to close in.
+// 0: close in u
+// 1: close in v
+// 
+//
+global proc int mod_poly2nurbs.closeDirection(string $surface) {
+
+    
+    string $selection[] = `ls -sl`;
+
+    string $border0[], $border1[];
+
+    // Find total distances between right and left border
+    // 
+    nurbsSelect -leftBorder $surface;
+    $border0 = `ls -sl`;
+
+    nurbsSelect -rightBorder $surface;
+    $border1 = `ls -sl`;
+
+    float $leftRightDistance = mod_poly2nurbs.borderDistance($border0,
+                                                             $border1);    
+
+    // Find total distances between top and bottom border
+    // 
+    nurbsSelect -topBorder $surface;
+    $border0 = `ls -sl`;
+
+    nurbsSelect -bottomBorder $surface;
+    $border1 = `ls -sl`;
+
+    float $topBottomDistance = mod_poly2nurbs.borderDistance($border0,
+                                                             $border1);
+
+
+    if($leftRightDistance < $topBottomDistance) {
+        return 0;
+    }
+
+    return 1;
+    
+}
+
+
+///
+// Return the total distance between closest vertices on the given
+// object borders.  Arguments should be arrays of the same number
+// of nurbs CVs in consistent order.
+//
+global proc float mod_poly2nurbs.borderDistance(string $borderA[],
+                                                string $borderB[]) {
+
+    float $totalDistance = 0.0;
+
+    float $a[] = `xform -q -translation $borderA`;
+
+    float $b[] = `xform -q -translation $borderB`;
+
+    int $i;
+    int $aSize = size($a);
+    for ($i=0; $i < $aSize; $i+=3) {
+        $totalDistance +=
+            mod_poly2nurbs.distance({$a[$i], $a[$i+1], $a[$i+2]},
+                                    {$b[$i], $b[$i+1], $b[$i+2]});
+    }
+
+    return $totalDistance;
+}
+
+///
+// Return the distance between va and vb
+//
+global proc float mod_poly2nurbs.distance(float $va[], float $vb[]) {
+
+    
+    float $vc[] = {$va[0]-$vb[0],
+                   $va[1]-$vb[1],
+                   $va[2]-$vb[2]};
+
+    return sqrt($vc[0] * $vc[0] + 
+                $vc[1] * $vc[1] +
+                $vc[2] * $vc[2]);
+
+}
