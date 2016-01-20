@@ -12,19 +12,22 @@ class blendshapeUI(object):
 	def _UI(self):
 		if pm.window("blendshapeWin",exists=1):
 			pm.deleteUI("blendshapeWin",window=1)
-		w=350
+		w=450
+		w2=190
+		
 		self.window=pm.window("blendshapeWin",t="BlendShape Tools",s=0,mb=1,rtf=1,w=w)
-
+		h=pm.window("blendshapeWin",q=1,h=1)
+		
 		pm.columnLayout("mainColumn",p="blendshapeWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
 		
-		pm.frameLayout("updateShapeFrame",p="mainColumn", label='Update Shapes', borderStyle='in' )
-		pm.rowLayout("ShapeNamesRow",p="updateShapeFrame",w=w,numberOfColumns=3,columnWidth3=(150,30,150),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both',5)])
+		pm.frameLayout("updateShapeFrame",p="mainColumn", label='Update Shapes', borderStyle='in',cll=1,cc=self.resizeWin4UpdateShape,ec=self.resizeWin4UpdateShape)
+		pm.rowLayout("ShapeNamesRow",p="updateShapeFrame",w=w,numberOfColumns=3,columnWidth3=(w2,30,w2),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both',5)])
 		pm.button(p="ShapeNamesRow",l="New Shapes",c=self.newShapeList)
 		pm.text(p="ShapeNamesRow",l=" ")
 		pm.button(p="ShapeNamesRow",l="Current Shapes",c=self.curShapeList)
 		
 		pm.rowLayout("shapeListRow",p="updateShapeFrame",w=w,numberOfColumns=3,columnWidth3=(30,30,30),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both',5)])
-		pm.textScrollList("newShapeList",p="shapeListRow",w=140,numberOfRows=8, allowMultiSelection=True)
+		pm.textScrollList("newShapeList",p="shapeListRow",w=w2,numberOfRows=8, allowMultiSelection=True)
 		pm.popupMenu("newShapelistPopUp",p="newShapeList")
 		pm.menuItem(p="newShapelistPopUp",l="Add To List",c=self.newShapeList)
 		pm.menuItem(p="newShapelistPopUp",l="Remove All From List",c=self.rmvAllFromNewList)
@@ -32,14 +35,14 @@ class blendshapeUI(object):
 			
 		self.button=pm.button(p="shapeListRow",l="update",c=self.updateShape)
 		
-		pm.textScrollList("curShapeList",p="shapeListRow",w=140,numberOfRows=8, allowMultiSelection=True)
+		pm.textScrollList("curShapeList",p="shapeListRow",w=w2,numberOfRows=8, allowMultiSelection=True)
 		pm.popupMenu("curShapelistPopUp",p="curShapeList")
 		pm.menuItem(p="curShapelistPopUp",l="Add To List",c=self.curShapeList)
 		pm.menuItem(p="curShapelistPopUp",l="Remove All From List",c=self.rmvAllFromCurList)
 
 		#---------------------------------------------------------------------
 
-		pm.frameLayout("stripShapesFrame",p="mainColumn", label='Strip Shapes', borderStyle='in' )
+		pm.frameLayout("stripShapesFrame",p="mainColumn", label='Strip Shapes', borderStyle='in',cll=1,cc=self.resizeWin4StripShape,ec=self.resizeWin4StripShape)
 		pm.button(p="stripShapesFrame",l="Get BlendShapes",c=self.getBlendShapes)
 		pm.rowLayout("stripShapesRow",p="stripShapesFrame",w=w,numberOfColumns=2,columnWidth2=(30,30),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
 		pm.textScrollList("blendshapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True,sc=self.getTargetShapes)
@@ -52,7 +55,33 @@ class blendshapeUI(object):
 
 		
 		pm.showWindow(self.window)
-	
+		
+	def resizeWin4UpdateShape(self,*args):
+		updateShapeFrameState = pm.frameLayout("updateShapeFrame",q=1,cl=1)
+		stripShapeFrameState = pm.frameLayout("stripShapesFrame",q=1,cl=1)
+
+		if updateShapeFrameState == 1 and stripShapeFrameState == 1:
+			pm.window("blendshapeWin",e=1,h=(h-159-192))
+		elif updateShapeFrameState == 0 and stripShapeFrameState == 0:
+			pm.window("blendshapeWin",e=1,h=h)
+		elif updateShapeFrameState == 1 and stripShapeFrameState == 0:
+			pm.window("blendshapeWin",e=1,h=(h-159))
+		elif updateShapeFrameState == 0 and stripShapeFrameState == 1:
+			pm.window("blendshapeWin",e=1,h=(h-192))
+
+	def resizeWin4StripShape(self,*args):
+		updateShapeFrameState = pm.frameLayout("updateShapeFrame",q=1,cl=1)
+		stripShapeFrameState = pm.frameLayout("stripShapesFrame",q=1,cl=1)
+
+		if updateShapeFrameState == 1 and stripShapeFrameState == 1:
+			pm.window("blendshapeWin",e=1,h=(h-159-192))
+		elif updateShapeFrameState == 0 and stripShapeFrameState == 0:
+			pm.window("blendshapeWin",e=1,h=h)
+		elif updateShapeFrameState == 1 and stripShapeFrameState == 0:
+			pm.window("blendshapeWin",e=1,h=(h-159))
+		elif updateShapeFrameState == 0 and stripShapeFrameState == 1:
+			pm.window("blendshapeWin",e=1,h=(h-192))
+
 	def curShapeList(self,*args):
 		getSel = pm.ls(sl=1,fl=1)
 		listItems = pm.textScrollList("curShapeList",q=1,ai=1)
