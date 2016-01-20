@@ -1,8 +1,12 @@
+# issues:
+#	- remove from blendshapeList
+#	- 
 import pymel.core as pm
 
 class blendshapeUI(object):
 	def __init__(self):
 		self.meshWithBS = ""
+		self.bsNd = []
 		pass
 	
 	def _UI(self):
@@ -37,20 +41,14 @@ class blendshapeUI(object):
 
 		pm.frameLayout("stripShapesFrame",p="mainColumn", label='Strip Shapes', borderStyle='in' )
 		pm.button(p="stripShapesFrame",l="Get BlendShapes",c=self.getBlendShapes)
-		pm.rowLayout("stripShapesRow",p="stripShapesFrame",w=w,numberOfColumns=3,columnWidth3=(30,30,30),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both',5)])
-		pm.textScrollList("blendshapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True)
-		pm.popupMenu("newShapelistPopUp",p="blendshapeList")
-		pm.menuItem(p="newShapelistPopUp",l="Add To List",c=self.newShapeList)
-		pm.menuItem(p="newShapelistPopUp",l="Remove All From List",c=self.rmvAllFromNewList)
-
-			
-		self.button=pm.button(p="stripShapesRow",l="strip",c=self.stripShapes)
+		pm.rowLayout("stripShapesRow",p="stripShapesFrame",w=w,numberOfColumns=2,columnWidth2=(30,30),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+		pm.textScrollList("blendshapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True,sc=self.getTargetShapes)
+		pm.popupMenu("blendShapeListPopUp",p="blendshapeList")
+		pm.menuItem(p="blendShapeListPopUp",l="Remove All From List",c=self.rmvAllFromblendShapeList)
 		
-		pm.textScrollList("curShapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True)
-		pm.popupMenu("curShapelistPopUp",p="curShapeList")
-		pm.menuItem(p="curShapelistPopUp",l="Add To List",c=self.curShapeList)
-		pm.menuItem(p="curShapelistPopUp",l="Remove All From List",c=self.rmvAllFromCurList)		
+		pm.textScrollList("targetShapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True)	
 
+		self.button=pm.button(p="stripShapesFrame",l="Strip Shapes",c=self.stripShapes)
 
 		
 		pm.showWindow(self.window)
@@ -101,21 +99,37 @@ class blendshapeUI(object):
 		if len(getSel) == 1:
 			self.meshWithBS = getSel[0]
 			bsNd = pm.ls(pm.listHistory(getSel[0]) or [],type='blendShape')
-			listItems = pm.textScrollList("blendshapeList",e=1,append=bsNd)
+			itemInList = pm.textScrollList("blendshapeList",q=1,ai=1)
+			if len(itemInList)>0:
+				for x in bsNd:
+					if x not in itemInList:
+						listItems = pm.textScrollList("blendshapeList",e=1,append=x)
+			else:
+				listItems = pm.textScrollList("blendshapeList",e=1,append=bsNd)
+
+	def rmvAllFromblendShapeList(self,*args):
+		pm.textScrollList("blendshapeList",e=1,ra=1)
+		pm.textScrollList("targetShapeList",e=1,ra=1)
+
+	def getTargetShapes(self,*args):
+		pm.textScrollList("targetShapeList",e=1,ra=1)
+		self.bsNd = pm.textScrollList("blendshapeList",q=1,si=1)
+		if len(self.bsNd) == 1:
+			tgtShapes = pm.blendShape(self.bsNd[0],t=1,q=1)
+			if len(tgtShapes)>0:
+				listTarget = pm.textScrollList("targetShapeList",e=1,append=tgtShapes)
 
 	def stripShapes(self,*args):
 		mesh = self.meshWithBS
-		bsNd = pm.textScrollList("blendshapeList",q=1,si=1)
-		if len(bsNd) == 1:
-			tgtShapes = pm.blendShape(bsNd[0],t=1,q=1)
+		if len(self.bsNd) == 1:
+			tgtShapes = pm.textScrollList("targetShapeList",q=1,si=1)
 			if len(tgtShapes)>0:
 				newShapeGrp = pm.group(n=(mesh+'_faceshapes'),em=1)
 				for tgt in tgtShapes:
-					print tgt
-					pm.setAttr(bsNd[0]+'.'+tgt,1)
+					pm.setAttr(self.bsNd[0]+'.'+tgt,1)
 					newTgt = pm.duplicate(mesh,n=tgt)
 					pm.parent(newTgt,newShapeGrp)
-					pm.setAttr(bsNd[0]+'.'+tgt,0)
+					pm.setAttr(self.bsNd[0]+'.'+tgt,0)
 				pm.select(newShapeGrp,r=1)
 
 
