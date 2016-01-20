@@ -1,0 +1,316 @@
+//Created by: Cristian Dumitriu
+//Creation Date: Oct. 2007	
+//Description: Mimics "Alias Studio" method of attaching separate
+//			   surfaces and closing surfaces in one shot.
+//
+//Previous version was created by Matt Paulson in Feb. 2001
+//
+//New in this version: This tool works on linear surfaces and has a new mode of operation.
+//					   The user can simply select a surface to close or two surfaces to attach.
+//					   The old mode of operation (selecting the border isoparms) is preserved.
+//
+//
+//If you try to steal the code or part of it, the curse of the Romanian vampire
+//will haunt you for the next 400 years! So, don't even think about it...
+//
+//
+
+
+global proc float[] getKnotsClean(float $knots[], int $form)
+{		
+	//Proc that removes the redundant knots at the beginning and the end of the float array $knots
+	//and returnes a clean float array.
+	float $knotsClean[];	
+	
+	if ($form == 2) //Surf is periodic in that specific dir.
+	{
+		for ($i = 2; $i < (size ($knots) - 2); $i++) //Strip the first and last two elements. The first
+													 //and last two elements exist because of the first and 
+													 //last two overlapping spans in a periodic surface.
+			$knotsClean[size ($knotsClean)] = $knots[$i];
+	}
+	else //Surf is not periodic in that dir.
+	{
+		for ($i = 2; $i < (size ($knots) - 2); $i++) //Strip the first and last two elements. They are duplicates.
+			$knotsClean[size ($knotsClean)] = $knots[$i];
+	}
+	return $knotsClean;	
+}
+
+global proc float getDist (float $knot, string $POSInfoNode, string $closestPOSNode, string $UorV)  
+{	
+	//This proc returnes the closest dist between two points on two different surfs.
+	float $closestDist;
+	vector $pointPosVec, $closestPointVec, $closestDistVec;   
+	
+	setAttr ($POSInfoNode + ".parameter" + toupper ($UorV)) $knot;
+	$pointPosVec = getAttr ($POSInfoNode + ".position"); //Get the x,y,z values of the point.
+	//Place $closestPOSNode at x,y,z.
+	setAttr ($closestPOSNode + ".inPosition") -type double3 ($pointPosVec.x) ($pointPosVec.y) ($pointPosVec.z);
+	$closestPointVec = getAttr ($closestPOSNode + ".position"); //Get the closest point on the adjacent surf.
+	$closestDistVec = $closestPointVec - $pointPosVec; //Get the distance between the points on the first and second surfs.
+	$closestDist = $closestDistVec; //$closestDist is the magnitude of $closestDistVec.
+	return $closestDist;
+} 
+
+global proc string getIso(string $surf, float $knotsV[], float $knotsU[], string $POSInfoNode, string $closestPOSNode)
+{		
+	//This proc returnes the isoparm of the $surf that is the closest border to the other surf.
+	string $knots[4], $iso; 
+	float $allDistU0[], $allDistU1[], $allDistV0[], $allDistV1[], $crntKnot, 
+		  $smallDist, $addDistU0, $addDistU1, $addDistV0, $addDistV1, $avrgDistU0, 
+		  $avrgDistU1, $avrgDistV0, $avrgDistV1, $fourDist[4];
+	
+	for ($crntKnot in $knotsV)
+	{	
+		setAttr ($POSInfoNode + ".parameterU") 0; //Place $POSInfoNode on the border of the surf $surf where U value is 0.
+		$allDistU0[size ($allDistU0)] = getDist ($crntKnot, $POSInfoNode, $closestPOSNode, "v"); 
+		setAttr ($POSInfoNode + ".parameterU") 1; //Place $POSInfoNode on the border of the surf $surf where U value is 1.
+		$allDistU1[size ($allDistU1)] = getDist ($crntKnot, $POSInfoNode, $closestPOSNode, "v");
+	}
+	$addDistU0 = 0.0; //Initialize $addDistU0 which is the added distances while U = 0.
+	for ($i = 0; $i < size ($allDistU0); $i++)
+		$addDistU0 = $addDistU0 + $allDistU0[$i];
+	$avrgDistU0 = $addDistU0 / size ($allDistU0);
+	$addDistU1 = 0.0; //Initialize $addDistU1 which is the added distances while U = 1.
+	for ($i = 0; $i < size ($allDistU1); $i++)
+		$addDistU1 = $addDistU1 + $allDistU1[$i];
+	$avrgDistU1 = $addDistU1 / size ($allDistU1);
+	for ($crntKnot in $knotsU)
+	{
+		setAttr ($POSInfoNode + ".parameterV") 0; //Place $POSInfoNode on the border of the surf $surf where V value is 0.
+		$allDistV0[size ($allDistV0)] = getDist ($crntKnot, $POSInfoNode, $closestPOSNode, "u");
+		setAttr ($POSInfoNode + ".parameterV") 1; //Place $POSInfoNode on the border of the surf $surf where V value is 1.
+		$allDistV1[size ($allDistV1)] = getDist ($crntKnot, $POSInfoNode, $closestPOSNode, "u");
+	}
+	$addDistV0 = 0.0; //Initialize $addDistV0 which is the added distances while V = 0.
+	for ($i = 0; $i < size ($allDistV0); $i++)
+		$addDistV0 = $addDistV0 + $allDistV0[$i];
+	$avrgDistV0 = $addDistV0 / size ($allDistV0);
+	$addDistV1 = 0.0; //Initialize $addDistV1 which is the added distances while V = 1.
+	for ($i = 0; $i < size ($allDistV1); $i++)
+		$addDistV1 = $addDistV1 + $allDistV1[$i];
+	$avrgDistV1 = $addDistV1 / size ($allDistV1);
+	$fourDist = {$avrgDistU0, $avrgDistU1, $avrgDistV0, $avrgDistV1};
+	$knots = {".u[0]", ".u[1]", ".v[0]", ".v[1]"};
+	$smallDist = $fourDist[0]; //Initialize $smallDist to the first elem of $fourDist.
+	$iso = $surf + $knots[0]; //Initialize $iso to the first elem of $knots.
+	for ($i = 1; $i < 4; $i++)
+	{
+		if ($fourDist[$i] < $smallDist)
+		{
+			$smallDist = $fourDist[$i];
+			$iso = $surf + $knots[$i];
+		}
+	}
+	return $iso;
+}
+
+global proc mod_attachPro()
+{
+	string $objSel[2], $shape[1], $shape1[1], $shape2[1], $infoNode, 
+		   $POSInfoNode, $closestPOSNode, $iso1, $iso2, $crntSurf, 
+		   $cv00, $cv10, $cvU0, $cv01, $cv0V, $inputType1[2], 
+		   $inputType2[2], $attachSurf[2], $buffer1[4], $buffer2[4]; 
+	int $spansU, $spansV, $formU, $formV, $formU1, $formU2, $formV1, $formV2, 
+		$indexCVU, $indexCVV, $dir;
+	float $knotsU1[], $knotsV1[], $knotsU2[], $knotsV2[];
+	vector $posCV00, $posCV10, $posCVU0, $vecU1, $vecU2, $posCV01, $posCV0V, $vecV1, $vecV2;
+	
+	$objSel = `filterExpand -expand true -selectionMask 10 -selectionMask 45`;
+	if (size ($objSel) == 1)
+	{
+		$inputType1 = `ls -showType $objSel[0]`; //Get the type of the selection.
+		if ($inputType1[1] == "transform") //The obj selected is a NURBS surf.
+		{
+			rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -keepRange 0  
+						   -keepControlPoints 1 -keepCorners 0 -spansU 0 -degreeU 0 -spansV 0 
+						   -degreeV 0 -direction 2 $objSel[0]; //Rebuild the surf in 0-1 range.
+			delete -ch $objSel[0]; //Delete history from the input surf to ensure good results.
+			$shape = `listRelatives -shapes -path $objSel[0]`; //get the shape node of the surf.
+			$formU = getAttr ($shape[0] + ".formU");
+			$formV = getAttr ($shape[0] + ".formV");
+			if (($formU == 2) && ($formV == 2)) //The surf is periodic in both dirs.
+				error "The surface is already periodic in both direction!";
+			else if ($formU == 2) //The surf is periodic only in U dir.
+			{
+				//select -replace ($objSel[0] + ".v[0]") ($objSel[0] + ".v[1]");
+				//Close the surf in V dir.
+				closeSurface -constructionHistory 0 -preserveShape 2 -replaceOriginal 1 -direction 1 $objSel[0];
+				select -replace $objSel[0];
+			}
+			else if ($formV == 2) //The surf is periodic only in V dir.
+			{
+				//select -replace ($objSel[0] + ".u[0]") ($objSel[0] + ".u[1]");
+				//Close the surf in U dir.
+				closeSurface -constructionHistory 0 -preserveShape 2 -replaceOriginal 1 -direction 0 $objSel[0];
+				select -replace $objSel[0];	
+			}
+			else //The surf is not periodic in any dir.
+			{
+				$spansU = getAttr ($objSel[0] + ".spansU");
+				$spansV = getAttr ($objSel[0] + ".spansV");
+				$indexCVU = ($spansU + 3) - 2; //The one before last CV on U dir.
+				$indexCVV = ($spansV + 3) - 2; //The one before last CV on V dir.
+				$cv00 = $objSel[0] + ".cv[0][0]";
+				$cv10 = $objSel[0] + ".cv[1][0]";
+				$cvU0 = $objSel[0] + ".cv[" + $indexCVU + "][0]";
+				$posCV00 = `pointPosition $cv00`;
+				$posCV10 = `pointPosition $cv10`;
+				$posCVU0 = `pointPosition $cvU0`;
+				$vecU1 = $posCV10 - $posCV00; //The vector determined by the positions of the first and the second CVs on U dir.
+				$vecU2 = $posCVU0 - $posCV00; //The vector determined by the positions of the first and the one before last CV on U dir.
+											  //Because the last CV and the first CV on U dir can overlap, I choose the one before last CV.
+				$cv01 = $objSel[0] + ".cv[0][1]";
+				$cv0V = $objSel[0] + ".cv[0][" + $indexCVV + "]";
+				$posCV01 = `pointPosition $cv01`;
+				$posCV0V = `pointPosition $cv0V`;
+				$vecV1 = $posCV01 - $posCV00;
+				$vecV2 = $posCV0V - $posCV00;
+
+				if ($vecU1 * $vecU2 < 0) //If the dot product is negative, the two vectors point in different dirs.
+										 //It means that the surface bends into a hoop.
+				{
+					//select -replace ($objSel[0] + ".u[0]") ($objSel[0] + ".u[1]");
+					//Close the surf in U dir.
+					closeSurface -constructionHistory 0 -preserveShape 2 -replaceOriginal 1 -direction 0 $objSel[0];
+					select -replace $objSel[0];
+				}
+				else if ($vecV1 * $vecV2 < 0)
+				{ 
+					//select -replace ($objSel[0] + ".v[0]") ($objSel[0] + ".v[1]");
+					//Close the surf in V dir.
+					closeSurface -constructionHistory 0 -preserveShape 2 -replaceOriginal 1 -direction 1 $objSel[0];
+					select -replace $objSel[0];
+				}
+				else
+					error "Try to help me! Either select the two isoparms where you want to close the surface or bend the surface into a hoop.";
+			}
+		}
+		else
+			error "Wrong items picked. To close a surface, pick the surface or pick two border isoparms on the same surface. To attach two surfaces, pick the surfaces or pick two isoparms, each on one surface.";
+	}
+	else if (size ($objSel) == 2)
+	{
+		$inputType1 = `ls -showType $objSel[0]`; //Get the type of the selection.
+		$inputType2 = `ls -showType $objSel[1]`;
+		if (($inputType1[1] == "transform") && ($inputType2[1] == "transform")) //Both elements of $objSel are NURBS surfs.
+		{
+			for ($crntSurf in $objSel)
+			{
+				rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -keepRange 0  
+							   -keepControlPoints 1 -keepCorners 0 -spansU 0 -degreeU 0 -spansV 0 
+							   -degreeV 0 -direction 2 $crntSurf; //Rebuild both surfs in 0-1 range for predictable results.
+				delete -ch $crntSurf; //Delete history from input surfaces to ensure good results.
+			}
+			$shape1 = `listRelatives -shapes -path $objSel[0]`; //get the shape node of the first selected surf.
+			$shape2 = `listRelatives -shapes -path $objSel[1]`; //get the shape node of the second selected surf.
+			$formU1 = getAttr ($shape1[0] + ".formU"); //$objSel[0]
+			$formV1 = getAttr ($shape1[0] + ".formV"); //$objSel[0]
+			$formU2 = getAttr ($shape2[0] + ".formU"); //$objSel[1]
+			$formV2 = getAttr ($shape2[0] + ".formV"); //$objSel[1]
+			$infoNode = `createNode surfaceInfo`; //to get the existing knots of a surf along U and V.
+			connectAttr ($shape1[0] + ".worldSpace") ($infoNode + ".inputSurface");
+			$knotsU1 = getAttr ($infoNode + ".knotsU"); //get knots on U for the first surf selected.
+			if (getAttr ($shape1[0] + ".degreeU") == 3) //$objSel[0] is cubic in U.
+				$knotsU1 = getKnotsClean ($knotsU1, $formU1);
+			$knotsV1 = getAttr ($infoNode + ".knotsV"); //get knots on V for the first surf selected.
+			if (getAttr ($shape1[0] + ".degreeV") == 3) //$objSel[0] is cubic in V.
+				$knotsV1 = getKnotsClean ($knotsV1, $formV1);
+			//Using disconnectAttr ($shape1[0] + ".worldSpace") ($infoNode + ".inputSurface"); it's not gonna work. If 
+			//the # of the knots of the first surf selected is larger than the # of the knots of the second surf selected,
+			//part of the knots of the first surf will show up as knots of the second surf selected. It's a bug. 
+			delete $infoNode;  
+			$infoNode = `createNode surfaceInfo`; //to get the existing knots of a surf along U and V.
+			connectAttr ($shape2[0] + ".worldSpace") ($infoNode + ".inputSurface");
+			$knotsU2 = getAttr ($infoNode + ".knotsU"); //get knots on U for the second surf selected.
+			if (getAttr ($shape2[0] + ".degreeU") == 3) //$objSel[1] is cubic in U.
+				$knotsU2 = getKnotsClean ($knotsU2, $formU2);
+			$knotsV2 = getAttr ($infoNode + ".knotsV"); //get knots on V for the second surf selected.
+			if (getAttr ($shape2[0] + ".degreeV") == 3) //$objSel[1] is cubic in V.	
+				$knotsV2 = getKnotsClean ($knotsV2, $formV2);
+			delete $infoNode;
+			$POSInfoNode = `createNode pointOnSurfaceInfo`; //to get the position in space of a point on surf.
+			connectAttr ($shape1[0] + ".worldSpace") ($POSInfoNode + ".inputSurface");
+			$closestPOSNode = `createNode  closestPointOnSurface`; //to get the position at the closest point on surf.
+			connectAttr ($shape2[0] + ".worldSpace") ($closestPOSNode + ".inputSurface");
+			select -clear; //Clear the selection.
+			$iso1 = getIso ($objSel[0], $knotsV1, $knotsU1, $POSInfoNode, $closestPOSNode);
+			disconnectAttr ($shape1[0] + ".worldSpace") ($POSInfoNode + ".inputSurface");
+			connectAttr ($shape2[0] + ".worldSpace") ($POSInfoNode + ".inputSurface");
+			disconnectAttr ($shape2[0] + ".worldSpace") ($closestPOSNode + ".inputSurface");
+			connectAttr ($shape1[0] + ".worldSpace") ($closestPOSNode + ".inputSurface");
+			$iso2 = getIso ($objSel[1], $knotsV2, $knotsU2, $POSInfoNode, $closestPOSNode);
+			delete $POSInfoNode $closestPOSNode;
+			$attachSurf = `attachSurface -constructionHistory 0 -replaceOriginal 1 -method 1 $iso1 $iso2`;
+			delete $attachSurf[1]; //$attachSurf[1] = $objSel[1];	
+			//Rebuild and reparameterize the resulting surface from 0 to 1.
+			rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -keepRange 0  -keepControlPoints 1
+						   -keepCorners 0 -spansU 0 -degreeU 0 -spansV 0 -degreeV 0 -direction 2 $attachSurf[0]; //$attachSurf[0] = $objSel[0];
+			select -replace $attachSurf[0];
+		}
+		else if (($inputType1[1] == "untyped") && ($inputType2[1] == "untyped")) //Both elements can be a combination of isoparms, surface 
+																				 //points or surface patches, etc. Most likely the user is
+																				 //going to pick two isoparms. 
+		{
+			//Exp: $objSel[0] = "group1|toes.v[0.024]";
+			//tokenize $objSel[0] ".[]" $buffer1;
+			//$buffer1[0] = "group1|toes";
+			//$buffer1[1] = "v"; 
+			//$buffer1[2] = "0" 
+			//$buffer1[3] = "024"
+			tokenize $objSel[0] ".[]" $buffer1;
+			tokenize $objSel[1] ".[]" $buffer2;
+			delete -ch $buffer1[0] $buffer2[0];	
+			$dir = 1; //Initialize $dir assuming V direction.
+			if ($buffer1[1] == "u")
+				$dir = 0; //U direction.
+
+			if (($buffer1[0] == $buffer2[0]) && ($buffer1[1] == $buffer2[1]))
+			{
+				closeSurface -constructionHistory 0 -preserveShape 2 -replaceOriginal 1 -direction $dir $buffer1[0];
+				select -replace $buffer1[0];
+			}
+			else if (($buffer1[0] == $buffer2[0]) && ($buffer1[1] != $buffer2[1]))
+				error "Pick two isoparms on the same direction!";
+			else
+			{
+				//Rebuild both surfs keeping the original surface parameterization.
+				rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -keepRange 1 -keepControlPoints 0 
+							   -keepCorners 0 -spansU 0 -degreeU 0 -spansV 0 -degreeV 0 -direction 2 $buffer1[0] $buffer2[0]; 
+				$attachSurf = `attachSurface -constructionHistory 0 -replaceOriginal 1 -method 1 $objSel[0] $objSel[1]`;
+				delete $attachSurf[1]; //$attachSurf[1] = $buffer2[0];	
+				//Rebuild and reparameterize the resulting surface from 0 to 1.
+				rebuildSurface -constructionHistory 0 -replaceOriginal 1 -rebuildType 0 -keepRange 0  -keepControlPoints 1
+							   -keepCorners 0 -spansU 0 -degreeU 0 -spansV 0 -degreeV 0 -direction 2 $attachSurf[0]; //$attachSurf[0] = $buffer1[0];
+				select -replace $attachSurf[0];
+			}
+		}
+		else
+			error "Wrong items picked. To close a surface, pick the surface or pick two border isoparms on the same surface. To attach two surfaces, pick the surfaces or pick two isoparms, each on one surface.";
+	}
+	else
+		error "Wrong items picked. To close a surface, pick the surface or pick two border isoparms on the same surface. To attach two surfaces, pick the surfaces or pick two isoparms, each on one surface.";
+}
+	
+
+
+
+
+	
+	
+		
+	
+
+
+
+
+
+		
+		
+		
+		
+
+		
+		
+	
