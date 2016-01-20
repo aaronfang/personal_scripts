@@ -19,7 +19,22 @@ class blendshapeUI(object):
 		h=pm.window("blendshapeWin",q=1,h=1)
 		
 		pm.columnLayout("mainColumn",p="blendshapeWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
+		'''
+		pm.button(p="mainColumn",l="abSymMesh",c=self.abSymMeshFunc)
 		
+		pm.frameLayout("mirrorSepShapeFrame",p="mainColumn", label='Mirror Separated Shapes', borderStyle='in',cll=1)
+		pm.rowLayout("oldNewTextRow",p="mirrorSepShapeFrame",w=w,numberOfColumns=2,columnWidth2=(w2,w2),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+		pm.button(p="oldNewTextRow",l="New Shape")
+		pm.button(p="oldNewTextRow",l="Old Shape")
+		pm.rowLayout("oldNewShapeRow",p="mirrorSepShapeFrame",w=w,numberOfColumns=2,columnWidth2=(w2,w2),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
+		pm.textScrollList("newSpList",p="oldNewShapeRow",w=w2,numberOfRows=1, allowMultiSelection=False)
+		pm.textScrollList("oldSpList",p="oldNewShapeRow",w=w2,numberOfRows=1, allowMultiSelection=False)
+		
+		pm.button(p="mirrorSepShapeFrame",l="Mirror Shape")
+		'''
+		
+		# ----------------------------------------------------------------------------------------
+
 		pm.frameLayout("updateShapeFrame",p="mainColumn", label='Update Shapes', borderStyle='in',cll=1,cc=self.resizeWin4UpdateShape,ec=self.resizeWin4UpdateShape)
 		pm.rowLayout("ShapeNamesRow",p="updateShapeFrame",w=w,numberOfColumns=3,columnWidth3=(w2,30,w2),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both',5)])
 		pm.button(p="ShapeNamesRow",l="New Shapes",c=self.newShapeList)
@@ -45,7 +60,7 @@ class blendshapeUI(object):
 		pm.frameLayout("stripShapesFrame",p="mainColumn", label='Strip Shapes', borderStyle='in',cll=1,cc=self.resizeWin4StripShape,ec=self.resizeWin4StripShape)
 		pm.button(p="stripShapesFrame",l="Get BlendShapes",c=self.getBlendShapes)
 		pm.rowLayout("stripShapesRow",p="stripShapesFrame",w=w,numberOfColumns=2,columnWidth2=(30,30),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
-		pm.textScrollList("blendshapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=True,sc=self.getTargetShapes)
+		pm.textScrollList("blendshapeList",p="stripShapesRow",w=140,numberOfRows=8, allowMultiSelection=False,sc=self.getTargetShapes)
 		pm.popupMenu("blendShapeListPopUp",p="blendshapeList")
 		pm.menuItem(p="blendShapeListPopUp",l="Remove All From List",c=self.rmvAllFromblendShapeList)
 		
@@ -55,7 +70,7 @@ class blendshapeUI(object):
 
 		
 		pm.showWindow(self.window)
-		
+
 	def resizeWin4UpdateShape(self,*args):
 		updateShapeFrameState = pm.frameLayout("updateShapeFrame",q=1,cl=1)
 		stripShapeFrameState = pm.frameLayout("stripShapesFrame",q=1,cl=1)
@@ -81,6 +96,47 @@ class blendshapeUI(object):
 			pm.window("blendshapeWin",e=1,h=(h-159))
 		elif updateShapeFrameState == 0 and stripShapeFrameState == 1:
 			pm.window("blendshapeWin",e=1,h=(h-192))
+
+	def abSymMeshFunc(self,*args):
+		pm.mel.eval("source abSymMesh;abSymMesh;")
+
+	def mirrorSepratedShapes(self,*args):
+	   
+		geo = cmds.ls(sl=1,fl=1)
+		
+		if 'L_' in geo[0]:
+		    print 'Mirroring from Left to Right'
+		    side='left'
+		    Lgeo=geo[0]
+		    Rgeo=Lgeo.replace('L_', 'R_')
+		   
+		if 'R_' in geo[0]:
+		    print 'Mirroring from Right to Left'
+		    side='right'
+		    Rgeo=geo[0]
+		    Lgeo=Rgeo.replace('R_', 'L_')     
+		 
+		Lshape=cmds.listRelatives(Lgeo, shapes=True, type='mesh', ni=True)
+		Rshape=cmds.listRelatives(Rgeo, shapes=True, type='mesh', ni=True)
+		
+		Lvert=cmds.polyEvaluate(Lshape[0], v=True)
+		Rvert=cmds.polyEvaluate(Rshape[0], v=True) 
+		
+		if not Lvert==Rvert:
+		    print 'Vertex count not matching between the two sides'
+		   
+		if side=='left':
+		    base=Lgeo
+		    target=Rgeo
+		   
+		if side=='right':
+		    base=Rgeo
+		    target=Lgeo
+		
+		for i in range(0,Lvert):
+		    #print('%s.vtx[%d]'%(Lgeo,i))
+		    pos=cmds.xform(('%s.vtx[%d]'%(base,i)), q=True, ws=True, t=True)
+		    cmds.xform(('%s.vtx[%d]'%(target,i)), t=((pos[0]*-1),pos[1],pos[2]), ws=True)
 
 	def curShapeList(self,*args):
 		getSel = pm.ls(sl=1,fl=1)
