@@ -41,3 +41,18 @@ def stripShapesUI():
 	cmds.button(l='Generate Target Shapes',c=('stripBS()'))
 	cmds.showWindow(afBSToolWin)
 stripShapesUI()
+
+
+# update shapes function:
+# -multi import shapes from mudbox/create reference
+# -select current shape by order
+# -select new shapes by order
+# -update shapes
+# -delete/hide/unreference imported shapes
+# -provide quick 1 to 1 update shapes and delete/unreference target shape
+
+
+# strip blendshape target shapes to geos functions:
+# -check number of blendshape node in current selected object
+# -if only one, then strip all it´s blendshape target shapes into meshes
+# -if more then one blendshape node, select specific node to strip target shapes or strip all

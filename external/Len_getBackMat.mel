@@ -1,0 +1,190 @@
+//
+//Created by Cristian Dumitriu in June 2005.
+//Assigns PDI colors to the selected surfs.
+//
+//Revised by Cristian Dumitriu in Feb 2007.
+//Fixed the "not connected materials" bug.
+//Before it didn't take into acount the situation when 
+//in the scene there were materials not connected to the 
+//shading groups. 
+//
+//If you try to steal this code or part of it, the curse of the Romanian vampire
+//will haunt you for the next 400 years! So, don't even think about it...
+//
+//** modified 8/6/09 by Michael Ross to accomodate mm parts
+//** modified 11/7/07 by Jeff Hayes to accomodate transparency
+
+global proc mod_applyMsColors()
+{
+    warning("Please use mod_applyDWColors instead.  " +
+            "mod_applyMsColors is deprecated, and will be going away soon.  " +
+            "Thanks!\n");
+    string $objSel[], $sceneShaders[], $crntShader, 
+           $lambertMats[], $lambertShaders[], $crntObj, 
+        $shape[], $shader, $materialPDI, $shaderPDI, $partSets[];
+
+    float $defaultDiffuseValue = 0.8;
+    
+    vector $PDIColor, $lambertColors[];
+    float $lambertDiffuseValues[] = {};
+    int $matchFound;
+    float $PDITrans, $lambertTransparencies[];
+    
+    $objSel = `filterExpand -expand true -sm 10 -sm 12`;
+    $objSel = `ls -dag -type "transform" $objSel`;
+
+    //Get all the existing shading groups in the scene.
+    $sceneShaders = `ls -exactType "shadingEngine"`;
+    for ($crntShader in $sceneShaders)
+    {
+        //The material node outputs to the shader node. Get only "lambert" material node.
+        $lambertMats = `listConnections -destination false -exactType true -type "lambert" $crntShader`;
+        if (size ($lambertMats)) //The material exists and it is a "lambert".
+        {
+            $lambertShaders[size ($lambertShaders)] = $crntShader;
+            $lambertColors[size ($lambertColors)] = `getAttr ($lambertMats[0] + ".color")`;
+            // to save a few calculations, we will only capture and use one channel (Red) of the 3-channel
+            // transparency attribute.  (In most cases, the 3 channels will be identical anyway)
+            $lambertTransparencies[size ($lambertTransparencies)] = `getAttr ($lambertMats[0] + ".transparencyR")`;
+
+            $lambertDiffuseValues[size ($lambertDiffuseValues)] = `getAttr ($lambertMats[0] + ".diffuse")`;
+
+        }
+    }
+    $partSets = {};
+
+    // add any part sets of the selected objects to the list of items
+    // to recolor
+    for ($obj in $objSel)
+    {
+        $partSets = stringArrayCatenate($partSets, mod_applyMsColors.getObjectPartSets($obj));
+    }
+
+    $objSel = stringArrayCatenate($objSel, $partSets);
+
+    for ($crntObj in $objSel)
+    {
+        string $objsToColor[] = {};
+        string $objWithColorAttr;
+        string $objectsWithColorAttr[];
+        int $objectColored;
+        // Set the above variables depending on whether or not the
+        // object is a set.
+        if (nodeType($crntObj) == "objectSet") {
+            $objectsWithColorAttr = {$crntObj};
+            $objsToColor = `sets -q $crntObj`;
+        } else {
+            $shape = `listRelatives -shapes -path $crntObj`;
+            $objectsWithColorAttr = $shape;
+            $objsToColor[0] = $crntObj;
+        }
+
+        // Sometimes a polygon will have 
+        for ($objWithColorAttr in $objectsWithColorAttr) {
+            if (`attributeExists "PDI_color" $objWithColorAttr` ||
+            	`attributeExists "PDI_transparency" $objWithColorAttr` )
+            {
+                if (`attributeExists "PDI_color" $objWithColorAttr`)
+                {
+                    $PDIColor = `getAttr ($objWithColorAttr + ".PDI_color")`;
+                }
+                else
+                {
+                	warning($objWithColorAttr + " has no color applied to it, but it does have a transparency value. This results in an undefined visual look. Please give " + $objWithColorAttr + " a color. \n");
+                    vector $PDIColor = <<1.0, 0.0, 1.0>>;
+                }
+
+                if (`attributeExists "PDI_transparency" $objWithColorAttr`)
+                    $PDITrans = `getAttr ($objWithColorAttr + ".PDI_transparency")`;
+                else
+                    $PDITrans = 0.0;            
+
+                $matchFound = 0;
+
+                // see if an shader exists for this PDI color
+                for ($i = 0; $i < size ($lambertShaders); $i++)
+                {
+                    if ($PDIColor == $lambertColors[$i] &&
+                        $PDITrans == $lambertTransparencies[$i] &&
+                        $defaultDiffuseValue == $lambertDiffuseValues[$i]
+                        )
+                    {
+                        $matchFound = 1;
+                        $shader = $lambertShaders[$i];
+                        break;
+                    }
+
+                }
+
+                if ($matchFound == 1) // if the PDI color matches the color of any existing shader...
+                {
+                    sets -e -forceElement $shader $objsToColor;     // ...assign that shader to the object
+                    $objectColored = 1;
+
+                }
+                else 
+                {    
+                    //Create a shader for PDI color and add it to $lambertShaders array.
+                    $materialPDI = `shadingNode -asShader lambert -name "matPDI#"`;
+                    $shaderPDI = `sets -renderable true -noSurfaceShader true -empty -name "shdrPDI#"`;
+                    $lambertShaders[size ($lambertShaders)] = $shaderPDI;
+                    $lambertColors[size ($lambertColors)] = $PDIColor;
+                    $lambertTransparencies[size ($lambertTransparencies)] = $PDITrans;
+                    $lambertDiffuseValues[size ($lambertDiffuseValues)] = $defaultDiffuseValue;
+                    connectAttr -force ($materialPDI + ".outColor") ($shaderPDI + ".surfaceShader");
+                    setAttr ($materialPDI + ".color") -type "double3" ($PDIColor.x) ($PDIColor.y) ($PDIColor.z);
+                    setAttr ($materialPDI + ".transparency") -type "double3" $PDITrans $PDITrans $PDITrans;
+                    setAttr ($materialPDI + ".diffuse") $defaultDiffuseValue;
+                    sets -e -forceElement $shaderPDI $objsToColor;
+                    $objectColored = 1;
+
+                }
+
+                string $blah[] = `listConnections -source true -type shadingEngine $shape[0]`;    
+
+                if ($blah[0] == "initialParticleSE")
+                {
+                    //print ("\nbad surface = " + $shape[0] + "\n");
+                    //sets -e -forceElement $shader $objsToColor;
+                    sets -e -forceElement initialShadingGroup $shape[0];
+                }
+            }
+            else if (!$objectColored) //PDI_color attr doesn't exist.
+            {
+                if (!`objExists shdrNonPDI`)
+                {
+                    //Create a shader for selected surfaces that don't have a PDI_color attr.
+                    shadingNode -asShader lambert -name matNonPDI;
+                    sets -renderable true -noSurfaceShader true -empty -name shdrNonPDI;
+                    connectAttr -force matNonPDI.outColor shdrNonPDI.surfaceShader;
+                    setAttr matNonPDI.color -type "double3" 0.65 0.65 0.7 ;
+                }
+                //Apply shdrNonPDI to $curSurf.
+                sets -e -forceElement shdrNonPDI $objsToColor;
+            }
+        }
+    }
+}
+        
+
+/**
+ * Return any object sets that designate what faces are part of
+ * different mesh parts.  Parts can be defined in mm_view.
+ */        
+global proc string[] mod_applyMsColors.getObjectPartSets(string $object)
+{
+    string $faces[] = `polyListComponentConversion -toFace $object`;
+    if(!size($faces)) {
+        return {};
+    }
+    string $sets[] = `listSets -o $faces`;
+    string $coloredSets[];
+    for($set in $sets)
+    {
+        if(attributeExists("PDI_color", $set))
+        {
+            $coloredSets[size($coloredSets)] = $set;
+        }
+    }
+    return $coloredSets;
+}
