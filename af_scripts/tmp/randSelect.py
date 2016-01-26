@@ -27,7 +27,15 @@ class randomSplitList(object):
 		newList = self.splitList(randList,cols)
 		return newList
 
-
+class randListUI(object):
+	def __init__(self):
+		pass
+	
+	def _UI(self):
+		if pm.window('mainWin',exist=1):
+			pm.deleteUI('mainWin',window=1)
+		
+		window=pm.window('mainWin',t="
 
 pm.select(randomSplitList().randListFunc(a,4)[0],r=1)
 a=pm.ls(sl=1,fl=1)
