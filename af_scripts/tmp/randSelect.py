@@ -39,12 +39,24 @@ class randListUI(object):
 		
 		window=pm.window("mainWin",t="Shuffle Select Tool",s=0,mb=1,mnb=0,mxb=0,rtf=1,w=w)
 		pm.columnLayout("mainColumn",p="mainWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
-		pm.intSliderGrp("colsSlider",p="mainColumn",cw3=(30,45,50),field=True,label='Parts',minValue=1,maxValue=10,fieldMinValue=1,value=1,step=1)
+		pm.text(l="Slice selection into random parts")
+		pm.intSliderGrp("colsSlider",p="mainColumn",cw3=(30,45,50),field=True,label='Parts',minValue=1,maxValue=5,fieldMinValue=1,value=1,step=1)
+		pm.radioButtonGrp("radioBtnGrp",l=" ",labelArray2=['List', 'Group'],cw3=[60,90,80],numberOfRadioButtons=2,sl=1)
 		
-		cmds.radioButtonGrp("radioBtnGrp",l=" ",labelArray2=['List', 'Group'],cw3=[60,90,80],numberOfRadioButtons=2,sl=1)
+		pm.textScrollList("listScroll",p="mainColumn",numberOfRows=5, allowMultiSelection=False)
+		pm.popupMenu("listPopUp",p="listScroll")
+		pm.menuItem(p="listPopUp",l="Select All In List",c=self.selectAllInList)
+		pm.menuItem(p="listPopUp",l="Remove Selected From List",c=self.rmvSelFromList)
+		pm.menuItem(p="listPopUp",l="Remove All From List",c=self.rmvAllFromList)
+		
 		pm.button(p="mainColumn",l="Shuffle")
 
 		pm.showWindow("mainWin")
+	
+	def shuffleSlice(self,*args):
+		cols = pm.intSliderGrp("colsSlider",q=1,v=1)
+		if pm.radioButtonGrp("radioBtnGrp",q=1,sl=1) == "List":
+			
 		
 randListUI()._UI()
 
