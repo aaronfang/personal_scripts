@@ -44,19 +44,20 @@ class randListUI(object):
 		pm.radioButtonGrp("radioBtnGrp",l=" ",labelArray2=['List', 'Group'],cw3=[60,90,80],numberOfRadioButtons=2,sl=1)
 		
 		pm.textScrollList("listScroll",p="mainColumn",numberOfRows=5, allowMultiSelection=False)
-		pm.popupMenu("listPopUp",p="listScroll")
-		pm.menuItem(p="listPopUp",l="Select All In List",c=self.selectAllInList)
-		pm.menuItem(p="listPopUp",l="Remove Selected From List",c=self.rmvSelFromList)
-		pm.menuItem(p="listPopUp",l="Remove All From List",c=self.rmvAllFromList)
 		
 		pm.button(p="mainColumn",l="Shuffle")
 
 		pm.showWindow("mainWin")
 	
 	def shuffleSlice(self,*args):
+		getSel = pm.ls(sl=1,fl=1)
 		cols = pm.intSliderGrp("colsSlider",q=1,v=1)
-		if pm.radioButtonGrp("radioBtnGrp",q=1,sl=1) == "List":
-			
+		if len(getSel)>=1 and len(getSel)>=cols:
+			array = getSel
+			result = randomSplitList().randListFunc(array,cols)
+			if pm.radioButtonGrp("radioBtnGrp",q=1,sl=1) == "List":
+				pm.textScrollList("listScroll",e=1,ra=1)
+				pm.textScrollList("listScroll",e=1,add=array)
 		
 randListUI()._UI()
 
