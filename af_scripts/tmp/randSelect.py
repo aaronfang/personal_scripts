@@ -43,7 +43,7 @@ class randListUI(object):
 		pm.intSliderGrp("colsSlider",p="mainColumn",cw3=(30,45,50),field=True,label='Parts',minValue=1,maxValue=5,fieldMinValue=1,value=1,step=1)
 		pm.radioButtonGrp("radioBtnGrp",l=" ",labelArray2=['List', 'Group'],cw3=[60,90,80],numberOfRadioButtons=2,sl=1)
 		
-		pm.textScrollList("listScroll",p="mainColumn",numberOfRows=5, allowMultiSelection=False)
+		pm.textScrollList("listScroll",p="mainColumn",numberOfRows=5, allowMultiSelection=False,sc=)
 		
 		pm.button(p="mainColumn",l="Shuffle")
 
@@ -54,11 +54,14 @@ class randListUI(object):
 		cols = pm.intSliderGrp("colsSlider",q=1,v=1)
 		if len(getSel)>=1 and len(getSel)>=cols:
 			array = getSel
-			result = randomSplitList().randListFunc(array,cols)
+			self.result = randomSplitList().randListFunc(array,cols)
 			if pm.radioButtonGrp("radioBtnGrp",q=1,sl=1) == "List":
 				pm.textScrollList("listScroll",e=1,ra=1)
-				pm.textScrollList("listScroll",e=1,add=array)
-		
+				for i in range(0,len(self.result)):
+					pm.textScrollList("listScroll",e=1,append="{0},{1}".format("Part-",(i+1)))
+	
+	def selPart(self,*args):
+		if pm.textScrollList("listScroll",q=1,si=1)
 randListUI()._UI()
 
 
