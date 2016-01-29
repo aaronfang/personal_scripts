@@ -1,7 +1,7 @@
 
 - mirror UVs
 - flip UVs
-- random split objects into n'groups
+Done - random split objects into n'groups
 - layout UVs by not scale them
 - reorder vertices
 - paint deformation
