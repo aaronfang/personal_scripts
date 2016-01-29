@@ -19,19 +19,10 @@ class blendshapeUI(object):
 		h=pm.window("blendshapeWin",q=1,h=1)
 		
 		pm.columnLayout("mainColumn",p="blendshapeWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
-		'''
+		
 		pm.button(p="mainColumn",l="abSymMesh",c=self.abSymMeshFunc)
+		pm.button(p="mirrorSepShapeFrame",l="Mirror Shape",c=self.mirrorSepratedShapes)
 		
-		pm.frameLayout("mirrorSepShapeFrame",p="mainColumn", label='Mirror Separated Shapes', borderStyle='in',cll=1)
-		pm.rowLayout("oldNewTextRow",p="mirrorSepShapeFrame",w=w,numberOfColumns=2,columnWidth2=(w2,w2),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
-		pm.button(p="oldNewTextRow",l="New Shape")
-		pm.button(p="oldNewTextRow",l="Old Shape")
-		pm.rowLayout("oldNewShapeRow",p="mirrorSepShapeFrame",w=w,numberOfColumns=2,columnWidth2=(w2,w2),adjustableColumn=2, columnAlign2=[('center'),('center')], columnAttach=[(1, 'both', 0), (2, 'both', 0)])
-		pm.textScrollList("newSpList",p="oldNewShapeRow",w=w2,numberOfRows=1, allowMultiSelection=False)
-		pm.textScrollList("oldSpList",p="oldNewShapeRow",w=w2,numberOfRows=1, allowMultiSelection=False)
-		
-		pm.button(p="mirrorSepShapeFrame",l="Mirror Shape")
-		'''
 		
 		# ----------------------------------------------------------------------------------------
 
@@ -101,37 +92,34 @@ class blendshapeUI(object):
 		pm.mel.eval("source abSymMesh;abSymMesh;")
 
 	def mirrorSepratedShapes(self,*args):
-	   
-		geo = cmds.ls(sl=1,fl=1)
+		# Select good shape then bad shape, run the script
+		geo = pm.ls(sl=1,fl=1)
+		Lgeo=[]
+		Rgeo=[]
+		if len(geo)==2:
+			for x in geo:
+				oc=pm.objectCenter(x)
+				if oc>0:
+					Lgeo.append(x)
+				elif oc<0:
+					Rgeo.append(x)
 		
-		if 'L_' in geo[0]:
-		    print 'Mirroring from Left to Right'
-		    side='left'
-		    Lgeo=geo[0]
-		    Rgeo=Lgeo.replace('L_', 'R_')
-		   
-		if 'R_' in geo[0]:
-		    print 'Mirroring from Right to Left'
-		    side='right'
-		    Rgeo=geo[0]
-		    Lgeo=Rgeo.replace('R_', 'L_')     
-		 
-		Lshape=cmds.listRelatives(Lgeo, shapes=True, type='mesh', ni=True)
-		Rshape=cmds.listRelatives(Rgeo, shapes=True, type='mesh', ni=True)
+		Lshape=Lgeo.getShape()
+		Rshape=Rgeo.getShape()
 		
-		Lvert=cmds.polyEvaluate(Lshape[0], v=True)
-		Rvert=cmds.polyEvaluate(Rshape[0], v=True) 
+		Lvert=pm.polyEvaluate(Lshape[0], v=True)
+		Rvert=pm.polyEvaluate(Rshape[0], v=True) 
 		
 		if not Lvert==Rvert:
 		    print 'Vertex count not matching between the two sides'
 		   
-		if side=='left':
-		    base=Lgeo
-		    target=Rgeo
+		if geo[0]==Lgeo[0]:
+		    base=Lgeo[0]
+		    target=Rgeo[0]
 		   
-		if side=='right':
-		    base=Rgeo
-		    target=Lgeo
+		if geo[0]==Rgeo[0]:
+		    base=Rgeo[0]
+		    target=Lgeo[0]
 		
 		for i in range(0,Lvert):
 		    #print('%s.vtx[%d]'%(Lgeo,i))
