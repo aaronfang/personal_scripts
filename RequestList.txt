@@ -16,3 +16,5 @@ Done - random split objects into n'groups
 - unbevel 
 - get selection order by world space position
 - blendshape UI
+- setup object to be export as assembly asset
+- model library brawser
