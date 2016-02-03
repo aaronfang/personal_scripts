@@ -22,3 +22,25 @@
 #     - weightmap list for save/load
 #     - increase/decrease area
 #     - mirror weights
+import pymel.core as pm
+
+class blendshapeV2UI(object):
+	def __init__(self):
+		pass
+	def _UI(self):
+		if pm.window("BSMainWin",exists=1):
+			pm.deleteUI("BSMainWin",window=1)
+		w=300
+		window=pm.window("BSMainWin",t="BlendShape Tools",s=0,rtf=1,mb=1,w=w)
+		pm.columnLayout("mainColumn",p="BSMainWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
+		
+		pm.showWindow("BSMainWin")
+		
+	def refreshBSList(self,*args):
+		getSel = pm.ls(sl=1,fl=1)
+		BSNode = pm.ls(pm.listHistory(getSel[0]) or [],type='blendShape')
+		tgtGrp = pm.blendShape(BSNode[0],t=1,q=1)
+		for tgt in tgtGrp:
+			pm.
+		
+blendshapeV2UI()._UI()
