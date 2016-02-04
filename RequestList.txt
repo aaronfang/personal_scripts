@@ -1,4 +1,5 @@
 
+- snap uv points
 - mirror UVs
 - flip UVs
 Done - random split objects into n'groups
