@@ -1,0 +1,5 @@
+//hide hotbox
+if (`currentCtx` == "selectSuperContext" || `currentCtx` == "moveSuperContext" || `currentCtx` == "RotateSuperContext" || `currentCtx` == "scaleSuperContext")
+hotBox -release;
+else
+SelectTool;
