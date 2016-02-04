@@ -1,0 +1,27 @@
+//Toggle Modeling Tool Kit tweak mode on the fly
+if(`currentCtx` != "ModelingToolkitSuperCtx")
+{
+    //switch to Nex vertex mode
+    dR_toggleSelectionMode("vertex", `dR_isCtrlHeld`, 1);
+    //turn on nex move tool
+    if (`nexOpt -q manipType` != "move")nexOpt -e manipType move;
+    //remove current tweak var
+    if (`nexOpt -q selectOption` == "tweakMarquee")
+        {
+            nexOpt -e -s useClickDrag 0;
+            optionVar -rm MT_useClickDrag;
+            nexOpt -e selectOption ""; dR_updateCommandPanel;
+        }
+    //tweak mode
+    nexOpt -e selectOption "tweakMarquee"; nexOpt -e -s useClickDrag 1; global string $nexLastSelectionMode; $nexLastSelectionMode = ""; dR_updateCommandPanel;
+    //x,y,z on
+    dR_setActiveAxis 7;
+    select -cl;
+}else if(`currentCtx` == "ModelingToolkitSuperCtx")
+{
+    nexOpt -e -s useClickDrag 0;
+    optionVar -rm MT_useClickDrag;
+    SelectTool;
+    toggleSelMode;
+    changeSelectMode -object; 
+}
