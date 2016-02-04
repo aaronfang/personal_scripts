@@ -10,8 +10,13 @@ if len(vtx)>=3:
 	pm.select("{0}.vtx[0:2]".format(c_plane),vtx[0:3])
 	pm.mel.eval("snap3PointsTo3Points(0);")
 	pm.parent(mesh,c_plane)
-	pm.
+	tmp = []
+	for a in ("{0}.tx,{0}.ty,{0}.tz,{0}.rx,{0}.ry,{0}.rz,".format(c_plane)):
+		tmp.append(a)
+		pm.setAttr(a,0)
 	pm.makeIdentity(mesh,a=1,t=0,r=1,s=0,n=0)
 	pm.xform(mesh,ws=1,piv=(piv[0],piv[1],piv[2]))
+	for i,a in enumerate("{0}.tx,{0}.ty,{0}.tz,{0}.rx,{0}.ry,{0}.rz,".format(c_plane)):
+		pm.setAttr(a,tmp[i])
 	pm.parent(mesh,w=1)
 	pm.delete(c_plane)
