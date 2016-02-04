@@ -35,10 +35,16 @@ class lineUpUVs(object):
 		self.button=pm.button(l="G",c=self.RK_Geometric)
 		self.button=pm.button(l="O",c=self.RK_Organic)
 		self.button=pm.button(l="S",c=self.RK_Straighten)
-		
+
+		pm.separator(p="mainColumn",style='in')
+		pm.rowLayout(p="mainColumn",w=w,h=25,numberOfColumns=3,columnWidth3=(10,30,80),adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0),(3, 'both', 5)])
+		pm.text("Pixel Ratio",al="left")
+		pm.intField("ratioFld",value=50)
+		pm.button(l="Rescale UVs",c=self.scaleUVRatio)
+
 		pm.separator(p="mainColumn",style='in')
 		pm.button(p="mainColumn",l="Store Selection",c=self.storeSelToList)
-		pm.textScrollList("selListTextScroll",p="mainColumn",numberOfRows=15, allowMultiSelection=True)
+		pm.textScrollList("selListTextScroll",p="mainColumn",numberOfRows=5, allowMultiSelection=True)
 		pm.popupMenu("listPopUp",p="selListTextScroll")
 		pm.menuItem(p="listPopUp",l="Select All In List",c=self.selectAllInList)
 		pm.menuItem(p="listPopUp",l="Remove Selected From List",c=self.rmvSelFromList)
@@ -171,5 +177,14 @@ class lineUpUVs(object):
 	def selectAllInList(self,*args):
 		listItems = pm.textScrollList("selListTextScroll",q=1,ai=1)
 		pm.textScrollList("selListTextScroll",e=1,si=listItems)
+
+	def scaleUVRatio(self,*args):
+		res = 1024
+		mult = 1
+		mult = (mult*(8192/res))/8
+		densityField = pm.intField("ratioFld",q=1,v=1)
+		unfold=0.0009765625*(densityField)
+		ratioField = unfold*mult
+		pm.unfold(i=0,us=True,s=ratioField)
 
 lineUpUVs()._UI()
