@@ -1,0 +1,5 @@
+//show hotbox
+if (`currentCtx` == "selectSuperContext" || `currentCtx` == "moveSuperContext" || `currentCtx` == "RotateSuperContext" || `currentCtx` == "scaleSuperContext")
+hotBox;
+else
+nexOpt -e -s useClickDrag 0;optionVar -rm MT_useClickDrag;SelectTool;
