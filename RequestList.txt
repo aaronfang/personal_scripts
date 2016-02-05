@@ -19,3 +19,4 @@ Done - random split objects into n'groups
 - blendshape UI
 - setup object to be export as assembly asset
 - model library brawser
+- duplicate alone path(ZB insert mesh brush)
