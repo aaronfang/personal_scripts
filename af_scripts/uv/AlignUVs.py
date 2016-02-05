@@ -1,8 +1,16 @@
-# This tool is design for the modeler to layout their UVs in more efficient way.
-# - Line up UVs based on object level to 'U' or 'V' direction with a certain gap provided.
-# - Layout UVs based on object level to each UDIMs
-# - RoadKill Pro plugin functions
-# - store and select a list of objects
+'''
+This tool is design for the modeler to layout their UVs in more efficient way.
+- Line up UVs based on object level to 'U' or 'V' direction with a certain gap provided.
+- Layout UVs based on object level to each UDIMs
+- RoadKill Pro plugin functions
+- store and select a list of objects
+added:
+	- scale by ratio
+need to add:
+	- UV rotate 180
+	- scale to last
+	- scale by ratio (with group)
+'''
 
 
 import pymel.core as pm
