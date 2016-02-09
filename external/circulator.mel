@@ -1,0 +1,534 @@
+/*--------------------------------Updated 17/01/2016----
+ Component Circulator -version: 1.0.3-
+by Phillip "Gemous" Whetstone
+=======================================================
+Main Procedure: 'circulator();'
+========================================================
+-Concept: This sctipt fills a void that I've been longing to have filled in Maya, and that's to make a selection of components
+            into a prefect circle.
+
+-What it does: 
+    Creates a GUI and tries to make polygonal components circular along X,Y,Z, or Normal Average of the selection
+    Need to select at least 2 edges or 1 face (face selection is for Maya 2015 and newer only)
+
+-Explanation of what the buttons do:
+    [ Average ]   = Creates a circle from the selected components oriented to the normal average of the coinciding verts.
+    [ X ] [ Y ] [ Z ] = Creates a circle aligned to the corresponding planar axis.
+    [Reverse] = If you notice the circle coming out with the faces facing the wrong way, undo the operation and check this and the circle will be created facing the opposite way.
+
+Simply make a selection of contiguous edges or a group of adjoining faces and run the tool.
+
+========================================================
+-Notes and Known Bugs/ Limitations in functionality:
+    Currently makes the cirle at the bounding box centre of the selection.
+    Only works to create whole complete circles, not arches. (Using this on border edges between mirrored geo is a good example
+        of what won't work).
+========================================================
+
+Changlog:
+
+1.0.3: Changed the way the edge selection is handled. Tool no longer works on vert selection, I may try and incorporate this back in at another time.
+
+==========================================================================
+//     Please feel free to contact me with any suggestions or bugs      \\
+//----------------------------------------------------------------------\\
+//            Contact Me: gemous83@gmail.com                      \\
+==========================================================================
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Generic Disclaimer: Use at your own risk.  I won't be responsible for anything bad that happens to your objects, scenes, or your car.//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*/
+
+global proc float[] gem_getVertAverageVector(string $verts[]){
+    
+    string $vertFaces[] = `polyListComponentConversion -fv -tvf $verts`;
+    $vertFaces = `filterExpand -sm 70 -ex true $vertFaces`;
+    //ConvertSelectionToVertices;
+    //string $verts[] = `ls -sl -fl`;
+    
+    float $normX[];
+    float $normY[];
+    float $normZ[];
+    
+    float $vertAverage[];
+    
+    for ( $vtxFace in $vertFaces )
+    {
+      // Get the per-vertex per-face normal for this component
+      float $normal[3] = `polyNormalPerVertex -q -xyz $vtxFace`;
+      
+      $normX[`size($normX)`] = $normal[0];
+      $normY[`size($normY)`] = $normal[1];
+      $normZ[`size($normZ)`] = $normal[2];
+    }
+    
+    float $aveX = 0.0;
+    float $aveY = 0.0;
+    float $aveZ = 0.0;
+    
+    for($val in $normX){
+        $aveX += $val;
+    }
+    for($val in $normY){
+        $aveY += $val;
+    }
+    for($val in $normZ){
+        $aveZ += $val;
+    }
+    
+    $aveX = $aveX / `size($normX)`;
+    $aveY = $aveY / `size($normY)`;
+    $aveZ = $aveZ / `size($normZ)`;
+    
+    return {$aveX, $aveY, $aveZ};
+}
+
+global proc float[] gem_getVertBounds(string $verts[]){
+    
+    float $posOrig[] = `xform -q -ws -t $verts[0]`;
+    
+    float $bounds[6] = {$posOrig[0], $posOrig[1], $posOrig[2], $posOrig[0], $posOrig[1], $posOrig[2]};
+    
+    for ($i = 1; `size($verts)`>$i; $i++){
+        float $pos[] = `xform -q -ws -t $verts[$i]`;
+        if ($pos[0] < $bounds[0]){
+            $bounds[0] = $pos[0];
+        }
+        if ($pos[0] > $bounds[3]){
+            $bounds[3] = $pos[0];
+        }
+        if ($pos[1] < $bounds[1]){
+            $bounds[1] = $pos[1];
+        }
+        if ($pos[1] > $bounds[4]){
+            $bounds[4] = $pos[1];
+        }
+        if ($pos[2] < $bounds[2]){
+            $bounds[2] = $pos[2];
+        }
+        if ($pos[2] > $bounds[5]){
+            $bounds[5] = $pos[2];
+        }
+    }
+    return $bounds;
+}
+
+global proc float[] gem_getBoundsCentre(float $bounds[]){
+    
+    float $x = $bounds[0] + $bounds[3];
+    if ($x != 0){
+        $x = $x / 2;
+    }
+    float $y = $bounds[1] + $bounds[4];
+    if ($y != 0){
+        $y = $y / 2;
+    }
+    float $z = $bounds[2] + $bounds[5];
+    if ($z != 0){
+        $z = $z / 2;
+    }
+    if($x == -0){
+        $x = 0;
+    }
+    if($y == -0){
+        $y = 0;
+    }
+    if($z == -0){
+        $z = 0;
+    }
+    float $centreBounds[3] = {$x, $y, $z};
+    
+    return $centreBounds;
+}
+
+global proc float gem_vertBoundRadius(float $bounds[], float $centre[]){
+
+    float $dist = sqrt( (($centre[0] - $bounds[3]) * ($centre[0] - $bounds[3])) + (($centre[1] - $bounds[4]) * ($centre[1] - $bounds[4]))+(($centre[2] - $bounds[5]) * ($centre[2] - $bounds[5])));
+    
+    return $dist;
+}
+
+global proc float[] gem_getObjRotation(string $vert){
+    string $buffer[];
+    tokenize($vert, ".", $buffer);
+    string $obj = $buffer[0];
+    
+    float $rotations[] = `getAttr ($obj + ".rotate")`;
+    
+    return $rotations;
+}
+
+global proc gem_circulatorMake(int $direction){
+    
+    int $test = 0;
+    int $reverseOrder = `checkBox -q -v gemCirculatorReverseCheck`;
+    
+    // Directions:
+    // 0 = average (current default)
+    // 1 = X axis
+    // 2 = Y axis
+    // 3 = Z axis
+
+    string $select[] = `ls -sl`;
+    
+    string $origEdges[] = {};
+    string $convertedEdges[] = {};
+    
+    if ((size(`filterExpand -sm 32`)) < 2 && (size(`filterExpand -sm 34`)) < 1){
+        error "You need to select at least 2 edges or 1 face.";
+    }
+    if ((size(`filterExpand -sm 32`)) >= 2){
+        $origEdges = `filterExpand -sm 32`;
+    }
+    
+    if ((size(`filterExpand -sm 34`)) >= 1){
+        $convertedEdges = convertFacesToBorderEdges(`filterExpand -sm 34`);
+    }
+    
+    select -cl;
+    
+    //convert face sepection to perimiter edges, custom way (find edges with only 1 face attached)
+    if(`size($origEdges)`>0){
+        select -add $origEdges;
+    }
+    if(`size($convertedEdges)`>0){
+        select -add $convertedEdges;
+    }
+    
+    string $newEdges[] = `ls -sl -fl`;
+    string $loops[] = `polySelectSp -q -loop $newEdges`;
+    string $loop[] = `ls -sl -fl`;
+    
+    string $reOrder[] = {};
+    
+    for($edge in $loop){
+        for($edge2 in $newEdges){
+            if($edge == $edge2){
+                $reOrder[`size($reOrder)`] = $edge;
+            }
+        }
+    }
+    
+    //if(size(`filterExpand -sm 34`)){
+    //    ConvertSelectionToEdgePerimeter;
+    //}
+    
+    ConvertSelectionToVertices;
+    string $verts[] = `ls -sl -fl`;
+    
+    string $buffer[] = {};
+    tokenize($verts[0], ".", $buffer);
+    string $objName = $buffer[0];
+    
+    float $rotations[] = `gem_getObjRotation($verts[0])`;
+        
+    float $vector[] = `gem_getVertAverageVector($verts)`;
+    if($test == 1){
+        print $vector;
+    }
+    float $bounds[] = `gem_getVertBounds($verts)`;
+    float $centre[] = `gem_getBoundsCentre($bounds)`;
+    float $radius = gem_vertBoundRadius($bounds, $centre);
+    
+    int $numVerts = `size($verts)`;
+    
+    float $intRot = 360.0 / $numVerts;
+    
+    if($test == 1){
+        print ("\nrotateValue = " + $intRot);
+        print ("\nRadius = " + $radius+"\n\n");
+    }
+    
+    string $loc1a[] = `spaceLocator -p 0 0 0`;
+    string $loc2a[] = `spaceLocator -p 0 0 0`;
+    
+    move -ws -a $centre[0] $centre[1] $centre[2] $loc1a[0];
+    
+    move -ws -a $centre[0] $centre[1] $centre[2] $loc2a[0];
+    
+    if($test == 1){
+        string $dupe1[] = `duplicate -rc $loc1a`;
+    }
+    
+    parent $loc2a $loc1a;
+    
+    string $nullGrp = `group -em`;
+    move -ws -a $centre[0] $centre[1] $centre[2] $nullGrp;
+    parent $loc1a $nullGrp;
+    
+    float $rot[] = `angleBetween -euler -v1 0.0 1.0 0.0 -v2 $vector[0] $vector[1] $vector[2]`;
+    
+    if ($direction == 0){
+        rotate -a ($rot[0]+$rotations[0]) ($rot[1]+$rotations[1]) ($rot[2]+$rotations[2]) $nullGrp;
+    }
+    if ($direction == 1){
+        rotate -a 0 0 90 $nullGrp;
+        
+    }
+    if ($direction == 2){
+        rotate -a 0 90 0 $nullGrp;
+    }
+    if ($direction == 3){
+        rotate -a 90 0 0 $nullGrp;
+    }
+
+    move -os -r $radius 0 0 $loc2a[0];
+    
+    float $closestDist = -1.0;
+    
+    float $loc2Pos[] = `xform -q -ws -t $loc2a`;
+    string $closestVerts[];
+    string $usedVerts[] = {};
+    
+    for($vert in $verts){
+        float $vertPos[] = `xform -q -ws -t $vert`;
+        
+        float $dist = sqrt( (($loc2Pos[0] - $vertPos[0]) * ($loc2Pos[0] - $vertPos[0])) + (($loc2Pos[1] - $vertPos[1]) * ($loc2Pos[1] - $vertPos[1]))+(($loc2Pos[2] - $vertPos[2]) * ($loc2Pos[2] - $vertPos[2])));
+        if($closestDist == -1.0 || $dist < $closestDist){
+            $closestDist = $dist;
+            $closestVerts[0] = $vert;
+        }
+    }
+    
+    //get starting edge (direction)
+    
+    string $edge1 = "";
+    string $edge2 = "";
+    
+    for($edge in $reOrder){
+        string $objBuffer[] = {};
+        tokenize($reOrder[0], ".", $objBuffer);
+        
+        string $objName = $objBuffer[0];
+        
+        string $vertsInfo[] = `polyInfo -ev $edge`;
+        string $vertBuffer[] = {};
+        tokenize($vertsInfo[0], " ", $vertBuffer);
+        $vertsInfo = {};
+        for($i=2;(`size($vertBuffer)`-1)>$i;$i++){
+            $vertsInfo[`size($vertsInfo)`] = ($objName+".vtx["+$vertBuffer[$i]+"]");
+        }
+        for ($vert in $vertsInfo){
+            if($vert == $closestVerts[0]){
+                if($edge1 == ""){
+                    $edge1 = $edge;
+                }
+                else{
+                    $edge2 = $edge;
+                }
+            }
+        }
+    }
+    
+    string $currentEdge = "";
+    if($reverseOrder == 0){
+        $currentEdge = $edge2;
+    }
+    else{
+        $currentEdge = $edge1;
+    }
+    
+    float $vertPos2[] = `xform -q -ws -t $closestVerts[0]`;
+    
+    //got starting edge (direction) not to start moving stuff.
+    
+    //$centre[0] $centre[1] $centre[2]
+    
+    if ($direction == 0){
+        move -ws -a $vertPos2[0] $vertPos2[1] $vertPos2[2] $loc2a[0];
+    }
+    else{
+        move -os -a ($radius*0.75) 0 0 $loc2a[0];
+        float $loc2Pos[] = `xform -q -ws -t $loc2a`;
+        move -os -r 0 0 (($loc2Pos[2]-$vertPos2[2])*0.75) $loc2a[0];
+        float $loc2Pos[] = `xform -q -ws -t $loc2a`;
+        move -ws -a $loc2Pos[0] $loc2Pos[1] $loc2Pos[2] $closestVerts[0];
+    }
+    
+    if($test == 1){
+        string $dupe[] = `duplicate $loc2a`;
+        parent -w $dupe;
+    }
+    
+    //move -ws -a $vertPos2[0] $vertPos2[1] $vertPos2[2] $loc2a[0];
+    rotate -r 0 $intRot 0 $loc1a;
+    
+    select $closestVerts[0];
+    
+    int $na = `size($reOrder)`-1;
+    
+    while ($na > 0){
+        
+        string $vertsInfo[] = `getConnectedVertsFromEdge($currentEdge)`;
+        string $newVert = "";
+        for ($vert in $vertsInfo){
+            if($vert != $closestVerts[0]){
+                $newVert = $vert;
+                string $remove[] = {$currentEdge};
+                $reOrder = stringArrayRemoveExact($remove, $reOrder);
+            }
+        }
+        $closestVerts[0] = $newVert;
+        
+        for($edge in $reOrder){
+            string $vertsInfo[] = `getConnectedVertsFromEdge($edge)`;
+            for ($vert in $vertsInfo){
+                if($vert == $closestVerts[0]){
+                    $currentEdge = $edge;
+                }
+            }
+        }
+        
+        float $loc2Pos[] = `xform -q -ws -t $loc2a`;
+        
+        move -ws -a $loc2Pos[0] $loc2Pos[1] $loc2Pos[2] $closestVerts[0];
+        
+        if($test == 1){
+            string $dupe[] = `duplicate $loc2a`;
+            parent -w $dupe;
+            print ("\n" + $closestVerts[0]+"\n\n");
+        }
+        rotate -r 0 $intRot 0 $loc1a;
+        
+        select $closestVerts[0];
+        $na--;
+    }
+    
+    delete $nullGrp;
+    
+    select $objName;
+    
+    SelectToggleMode;
+    
+    select $select;
+    
+    ConvertSelectionToVertices;
+    
+    global string $gRotate;
+
+    setToolTo $gRotate;
+    
+    if ($direction == 0){
+        manipRotateContext -e -mode 9 Rotate;
+    }
+    else{
+        manipRotateContext -e -mode 1 Rotate;
+    }
+    
+    print "\nDONE!";
+}
+
+global proc circulator(){
+    string $title = "Circulator 1.0.3";
+    string $win = "circulatorWindow";
+    int $windowHeight = 80;
+    int $width = 140;
+    if ( `window -exists $win` ) { deleteUI $win;}
+    
+    int $x = 135;
+    
+    window -t $title -menuBar 0 -s false -w $width -h $windowHeight $win;
+    string $layout = `columnLayout -w $width -h $windowHeight`;
+        rowColumnLayout -numberOfColumns 3 -cw 1 10 -cw 2 120 -cw 3 10;
+            text -l "" -w 10;
+            text -l "Perfect Circle Maker";
+            text -l "" -w 10;
+        setParent ..;
+        rowColumnLayout -numberOfColumns 3 -cw 1 10 -cw 2 120 -cw 3 10;
+            text -l "" -w 10;
+            button -l "Average" -bgc 1 0.827 0.361 -c "gem_circulatorMake(0)" -ann "Align circle to best plane / normal average of verts.";
+            text -l "" -w 10;
+        setParent ..;
+        rowColumnLayout -numberOfColumns 5 -cw 1 10 -cw 2 40 -cw 3 40 -cw 4 40 -cw 5 10;
+            text -l "" -w 10;
+            button -l " X " -bgc 1 0.5 0.5 -c "gem_circulatorMake(1)" -ann "Align circle to X Axis.";
+            button -l " Y " -bgc 0.5 1 0.5 -c "gem_circulatorMake(2)" -ann "Align circle to Y Axis.";
+            button -l " Z " -bgc 0.5 0.5 1 -c "gem_circulatorMake(3)" -ann "Align circle to Z Axis.";
+            text -l "" -w 10;
+        setParent ..;
+        checkBox -l "Reverse" -v 0 gemCirculatorReverseCheck;
+    setParent ..;
+    
+    showWindow $win;
+}
+
+global proc string[] reverseArray(string $array[], int $keepFirst){
+    string $reverseArray[] = {};
+    for( $n = 0; $n < `size($array)`; $n++ ){
+        $reverseArray[(`size($array)` - 1 - $n )] = $array[$n];
+    }
+    if($keepFirst == 1){
+        stringArrayRemoveAtIndex(`size($reverseArray)`-1, $reverseArray);
+        stringArrayInsertAtIndex(0, $reverseArray, $array[0]);
+    }
+    return $reverseArray;
+}
+
+global proc string[] getConnectedVertsFromEdge(string $edge){
+    string $objBuffer[] = {};
+    tokenize($edge, ".", $objBuffer);
+    
+    string $objName = $objBuffer[0];
+    
+    string $vertsInfo[] = `polyInfo -ev $edge`;
+    string $vertBuffer[] = {};
+    tokenize($vertsInfo[0], " ", $vertBuffer);
+    string $verts[] = {($objName+".vtx["+$vertBuffer[2]+"]"), ($objName+".vtx["+$vertBuffer[3]+"]")};
+    return $verts;
+}
+
+global proc string[] convertFacesToBorderEdges(string $faceArray[]){
+    select $faceArray;
+    string $faces[] = `ls -sl -fl`;
+    string $storedEdges[] = {};
+    string $allEdges[] = {};
+    
+    for($face in $faces){
+        string $connectedEdges[] = `polyInfo -fe $face`;
+        string $objBuffer[] = {};
+        tokenize($face, ".", $objBuffer);
+        
+        string $edgeBuffer[] = {};
+        string $objName = $objBuffer[0];
+        for($edge in $connectedEdges){
+            string $faceBuffer[] = {};
+            tokenize($edge, " ", $faceBuffer);
+            for($n=2;$n<`size($faceBuffer)`-1;$n++){
+                $edgeBuffer[`size($edgeBuffer)`] = ($objName+".e["+$faceBuffer[$n]+"]");
+            }
+        }
+        appendStringArray($allEdges, $edgeBuffer, `size($edgeBuffer)`);
+        stringArrayRemoveDuplicates($allEdges);
+    }
+    
+    for($edge in $allEdges){
+        string $connectedFaces[] = `polyInfo -ef $edge`;
+        string $objBuffer[] = {};
+        tokenize($edge, ".", $objBuffer);
+        
+        string $faceBuffer[] = {};
+        string $objName = $objBuffer[0];
+        for($face in $connectedFaces){
+            string $edgeBuffer[] = {};
+            tokenize($face, " ", $edgeBuffer);
+            for($n=2;$n<`size($edgeBuffer)`-1;$n++){
+                $faceBuffer[`size($faceBuffer)`] = ($objName+".f["+$edgeBuffer[$n]+"]");
+            }
+        }
+        
+        if(`size($faceBuffer)`==1){
+            $storedEdges[`size($storedEdges)`] = $edge;
+        }
+        else{
+            $faceBuffer = stringArrayRemoveExact($faces, $faceBuffer);
+            if(`size($faceBuffer)`==1){
+                $storedEdges[`size($storedEdges)`] = $edge;
+            }
+        }
+        
+    }
+    
+    return $storedEdges;
+}
+
+circulator;
