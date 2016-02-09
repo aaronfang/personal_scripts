@@ -20,3 +20,4 @@ Done - random split objects into n'groups
 - setup object to be export as assembly asset
 - model library brawser
 - duplicate alone path(ZB insert mesh brush)
+- select component inside selection
