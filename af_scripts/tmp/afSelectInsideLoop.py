@@ -7,6 +7,9 @@ select inside the loop:
 	- select the uv shell contains the last selection and convert to face
 	- remove the temp uvset
 
+use scriptJob for condition change
+use hilite for highlight current selection
+
 '''
 import maya.cmds as cmds
 #import afCore.cmds as ac
