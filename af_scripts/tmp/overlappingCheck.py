@@ -13,14 +13,14 @@ class overlappingCheck(object):
 		w2 = 70
 		cmds.window("checkOverlapWin",t="Mesh Overlap Check",s=0,mb=1,rtf=1,w=w,mnb=0,mxb=0)
 		cmds.columnLayout("mainColumn",p="checkOverlapWin",columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
-		cmds.rowLayout("mainRow",p="mainColumn",w=w,numberOfColumns=3,columnWidth3=(w2,50,w2),adjustableColumn=2, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both', 0)])
+		cmds.rowLayout("mainRow",p="mainColumn",w=w,numberOfColumns=3,columnWidth3=(60,50,w2),adjustableColumn=3, columnAlign3=[('center'),('center'),('center')], columnAttach=[(1, 'both', 1), (2, 'both', 0), (3, 'both', 0)])
 		cmds.text(p="mainRow",l="Threshold")
 		cmds.floatField("thresholdField",p="mainRow",min=0,pre=3,value=0.01)
-		cmds.button(p="mainRow",l="get distance",c=self.get_distance)
+		cmds.button(p="mainRow",l="Get Distance",c=self.get_distance)
 		
 		cmds.checkBox("centerCheck",p="mainColumn",l="similar position",ed=0,al="center",v=1)
 		cmds.checkBox("bboxCheck",p="mainColumn",l="similar sizes", al="center",v=0)
-		cmds.button(p="mainColumn",l="check overlapping",c=self.check_object_overlap)
+		cmds.button(p="mainColumn",l="Check Overlapping",c=self.check_object_overlap)
 
 		cmds.separator(p="mainColumn",style='in')
 		cmds.textScrollList("overlapListTextScroll",p="mainColumn",numberOfRows=8,allowMultiSelection=True,sc=self.select_item)
