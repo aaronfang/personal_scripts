@@ -17,8 +17,9 @@ class overlappingCheck(object):
 		cmds.text(p="mainRow",l="Threshold")
 		cmds.floatField("thresholdField",p="mainRow",min=0,pre=3,value=0.01)
 		cmds.button(p="mainRow",l="get distance",c=self.get_distance)
-
-		cmds.checkBox("bboxCheck",p="mainColumn",l="Bounding Box Check", al="center",v=0)
+		
+		cmds.checkBox("centerCheck",p="mainColumn",l="similar position",ed=0,al="center",v=1)
+		cmds.checkBox("bboxCheck",p="mainColumn",l="similar sizes", al="center",v=0)
 		cmds.button(p="mainColumn",l="check overlapping",c=self.check_object_overlap)
 
 		cmds.separator(p="mainColumn",style='in')
@@ -53,23 +54,30 @@ class overlappingCheck(object):
 							if meshes not in overlap_bbox:
 								overlap_bbox.append(meshes)
 	
-				if cmds.checkBox("bboxCheck",q=True,v=True) == 0:
-					for item in overlap_center:
-						cur_in_list = cmds.textScrollList("overlapListTextScroll",q=True,ai=True)
-						if cur_in_list!=None and item[0] not in cur_in_list and item[1] not in cur_in_list:
-							cmds.textScrollList("overlapListTextScroll",e=True,a=item)
-						else:
-							cmds.textScrollList("overlapListTextScroll",e=True,a=item)
-				#elif cmds.checkBox("bboxCheck",q=True,v=True) == 1:
-					#for item in overlap_bbox:
-						#if item not in cmds.textScrollList("overlapListTextScroll",q=True,ai=True):
-							#cmds.textScrollList("overlapListTextScroll",e=True,a=item)
+			if cmds.checkBox("bboxCheck",q=True,v=True) == 0:
+				item_list = []
+				for item in overlap_center:
+					for x in item:
+						item_list.append(x)
+				item_list = list(set(item_list))
+				cmds.textScrollList("overlapListTextScroll",e=True,a=item_list)
+				cmds.select(cmds.textScrollList("overlapListTextScroll",q=True,ai=True),r=1)
+				
+			elif cmds.checkBox("bboxCheck",q=True,v=True) == 1:
+				item_list = []
+				for item in overlap_bbox:
+					for x in item:
+						item_list.append(x)
+				item_list = list(set(item_list))
+				cmds.textScrollList("overlapListTextScroll",e=True,a=item_list)
+				cmds.select(cmds.textScrollList("overlapListTextScroll",q=True,ai=True),r=1)
 
 	def select_item(self,*args):
 		sel_in_list = cmds.textScrollList("overlapListTextScroll",q=True,si=True)
-		for item in sel_in_list:
-			if item not in cmds.ls(type="transform",o=1,fl=1):
-				cmds.textScrollList("overlapListTextScroll",e=True,ri=item)
+		if sel_in_list != None:
+			for item in sel_in_list:
+				if item not in cmds.ls(type="transform",o=1,fl=1):
+					cmds.textScrollList("overlapListTextScroll",e=True,ri=item)
 		cmds.select(sel_in_list,r=1)
 
 	def get_distance(self,*args):
@@ -83,5 +91,6 @@ class overlappingCheck(object):
 			if distance > dist_in_field:
 				dist = dist_in_field + 0.001
 				cmds.floatField("thresholdField",e=True,v=dist)
-
+		else:
+			cmds.confirmDialog(m="Please select 2 meshes close to each other to calculate the distance!",b="ok")
 overlappingCheck()._UI()
