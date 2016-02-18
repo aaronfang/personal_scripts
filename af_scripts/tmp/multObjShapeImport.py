@@ -40,5 +40,3 @@ def multObjShapeUpdate():
         cmds.confirmDialog(m="--==Please Select Something!==--")
 
 multObjShapeImport()
-
-multObjShapeUpdate()
