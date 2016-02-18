@@ -5,7 +5,6 @@ class mirrorSelectedShapes(object):
         self.sculpt_shape = sculpt_shape = ""
         self.base_shape = base_shape = ""
         self.cur_shapes = []
-        
 
     def main(self,*args):
         self.cur_shapes = cmds.ls(sl=True,fl=True)
@@ -16,18 +15,19 @@ class mirrorSelectedShapes(object):
             cmds.columnLayout()
             cmds.button(l="Now Select the \"Base Shape\".",c=self.selectBaseShape)
             cmds.showWindow("popupWin")
-
+        else:
+            cmds.confirmDialog(m="Please Select Shapes You Wish To Mirror")
 
     def selectBaseShape(self,*args):
         base_shape = cmds.ls(sl=True)[0]
         if len(base_shape)>0:
             for shape in self.cur_shapes:
+                #cmds.xform(shape,q=True,ws=True,piv=True)
                 self.CreateMirrorShape(base_shape,shape)
             if cmds.window("popupWin",exists=1):
                 cmds.deleteUI("popupWin",window=1)
         else:
             cmds.confirmDialog(m="Please Select Base Shape Geo!")
-
 
     def CreateMirrorShape(self,base_shape,sculpt_shape):
         if "L_" in sculpt_shape and "left" not in sculpt_shape and "right" not in sculpt_shape:
