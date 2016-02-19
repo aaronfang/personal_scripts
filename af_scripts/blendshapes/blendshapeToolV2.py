@@ -1,6 +1,7 @@
 # blendshape tools
 # - import and replace current target shapes
 # - export target shapes as separate objs
+# - expand shapes in viewport 
 # - create blendshape based on selection(src/target) and lock the src
 # - display blendshape target sliders for selected src geometries
 # - add/remove blendshape targets
@@ -15,6 +16,7 @@
 # - mirror half(separated model)
 # - freeze transform for all vertices
 # - update all target shapes and in-between shapes based on naming
+# - corrective shape create/connect/modify
 # - paint weight enhance functions:
 #     - reverse value
 #     - add/reduce value for non-zero areas
