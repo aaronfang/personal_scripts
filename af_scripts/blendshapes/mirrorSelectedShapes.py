@@ -59,10 +59,10 @@ class mirrorSelectedShapes(object):
         cmds.select(cl=True)
         cmds.select('baseWrap')
         cmds.select('baseScaleNeg', add=True)
-        cmds.CreateWrap()
+        wrap_node = cmds.CreateWrap()[0]
         cmds.select(cl=True)
         
-        cmds.setAttr("wrap1.exclusiveBind", 1)
+        cmds.setAttr("{0}.exclusiveBind".format(wrap_node), 1)
 
         #Now turn on our Negated blendShpe
         cmds.setAttr("TempBlend."+sculpt_shape, 1)
