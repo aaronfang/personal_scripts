@@ -1,0 +1,36 @@
+// ================================================================
+// moves the first selected object to the second
+// ================================================================
+//
+// Purpose:
+// --------
+// Moves the second selected object to the first in a sure and clean way (no constraint applied to either the object).
+//
+// Usage:
+// ------
+//			moveToSelected( <string destinationObject>, <string objectToMove> )
+// 
+
+global proc moveToSelected ( string $destinationObject, string $objectToMove )
+{
+// Create a locator and put it at the object to move's position.
+spaceLocator -p 0 0 0 -n "moveToSelectedTempLocator";
+pointConstraint -w 1 -o 0 0 0 $objectToMove "moveToSelectedTempLocator";
+delete "moveToSelectedTempLocator_pointConstraint1";
+
+// Parent the locator to the object to move (to get the correct space orientation) and zero-out it's transformations.
+parent "moveToSelectedTempLocator" $objectToMove;
+makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 "moveToSelectedTempLocator";
+
+// Put the locator at the destination object's position and store its transforms.
+pointConstraint -w 1 -o 0 0 0 $destinationObject "moveToSelectedTempLocator";
+float $transX = `getAttr "moveToSelectedTempLocator.translateX"`;
+float $transY = `getAttr "moveToSelectedTempLocator.translateY"`;
+float $transZ = `getAttr "moveToSelectedTempLocator.translateZ"`;
+
+// Get rid of the locator now, in order to avoid creating a cycle.
+delete "moveToSelectedTempLocator";
+
+// Move the object to it's destination.
+move -r -os $transX $transY $transZ $objectToMove;
+}
