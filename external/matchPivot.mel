@@ -1,0 +1,129 @@
+// ===========================================================================
+// Change the pivot position and rotate (and scale) axis of the selected object
+// to match the first selected object.
+// ===========================================================================
+
+global proc matchPivot ( string $sourceObject, string $destinationObject, int $doTranslate, int $doRotate )
+{
+// Determine children of selected object.
+select -r $destinationObject;
+string $childrenTransform[] = `listRelatives -typ transform`;
+
+if ( $doTranslate )
+	{
+	float $sourceObjectPivot[] = `xform -q -ws -rp $sourceObject`;
+	xform -a -ws -piv $sourceObjectPivot[0] $sourceObjectPivot[1] $sourceObjectPivot[2] $destinationObject ;
+	}
+
+if ( ((!`objExists ($destinationObject + "_orientConstraint1")`) || (!`objExists ($destinationObject + "_pointConstraint1")`)) &&
+		( $doRotate ) )
+	{
+	// Remove children from the hierarchy (if they exist) by parenting them to the world.
+	if ( $childrenTransform[0] != "" )
+		parent -world $childrenTransform;
+
+	// Define type of geometry of selected object.
+	string $whatType[] = `ls -type geometryShape -dag -showType $destinationObject`; //print ( "\n whatType" + 1 + " = " + $whatType[1] + "\n");
+
+	// Polygons
+	if ( $whatType[1] == "mesh" )
+		{
+		// Store vertices position.
+		int $numberOfVertices[] = `polyEvaluate -v $destinationObject`;
+		float $allVtx[] = `xform -q -ws -t ( $destinationObject + ".vtx[0:" + $numberOfVertices[0] + "]" )`;
+
+		// Orient-constraint object to joint.
+		orientConstraint -w 1 -o 0 0 0 -n "tmpConstraint" $sourceObject $destinationObject; //print ( "\n$childrenTransform " + $i + " = " + $childrenTransform[$i] );
+
+		// Move back the vertices where they were.
+		int $j = 0;
+
+		for ($i=0;$i<$numberOfVertices[0];$i++)
+			{
+			xform -a -ws -t $allVtx[$j] $allVtx[$j+1] $allVtx[$j+2] ( $destinationObject + ".vtx[" + $i + "]" );
+			$j+=3;
+			}
+		}
+
+	// Nurbs surfaces
+	else if ( $whatType[1] == "nurbsSurface" )
+		{
+		// Store CVs position.
+		int $maxU = `getAttr ( $destinationObject + ".spansU")` + 3;
+		int $maxV = `getAttr ($destinationObject + ".spansV")`;
+		float $allCvs[] = `xform -q -ws -t ( $destinationObject + ".cv[0:" + $maxU + "][0:" + $maxV + "]" )`;
+		int $numberOfCvs = ( $maxU * $maxV );
+
+		// Orient-constraint object to joint.
+		orientConstraint -w 1 -o 0 0 0 -n "tmpConstraint" $sourceObject $destinationObject; //print ( "\n$childrenTransform " + $i + " = " + $childrenTransform[$i] );
+
+		// Move back the vertices where they were.
+		int $k = 0;
+
+		for ($i=0;$i<$maxU;$i++)
+			{
+			for ($j=0;$j<$maxV;$j++)
+				{
+				xform -a -ws -t $allCvs[$k] $allCvs[$k+1] $allCvs[$k+2] ( $destinationObject + ".cv[" + $i + "][" + $j + "]" );
+				$k+=3;
+				}
+			}
+		}
+			
+	// Nurbs curves
+	else if ( $whatType[1] == "nurbsCurve" )
+		{
+		// Store CVs position.
+		int $maxU = (`getAttr ( $destinationObject + ".spans")`) + 1;
+		float $allCVs[] = `xform -q -ws -t ( $destinationObject + ".cv[*]" )`;
+
+		// Orient-constraint object to joint.
+		orientConstraint -w 1 -o 0 0 0 -n "tmpConstraint" $sourceObject $destinationObject; //print ( "\n$childrenTransform " + $i + " = " + $childrenTransform[$i] );
+
+		// Move back the vertices where they were.
+		int $k = 0;
+
+		for ($i=0;$i<$maxU;$i++)
+			{
+			xform -a -ws -t $allCVs[$k] $allCVs[$k+1] $allCVs[$k+2] ( $destinationObject + ".cv[" + $i + "]" );
+			$k+=3;
+			}
+		}
+
+	// If it's a transform, then just orient-constraint.
+	else
+		{
+		// Orient-constraint object to joint.
+		orientConstraint -w 1 -o 0 0 0 -n "tmpConstraint" $sourceObject $destinationObject; //print ( "\n$childrenTransform " + $i + " = " + $childrenTransform[$i] );
+
+		string $isJoint[] = `ls -sl -showType $destinationObject`;
+
+		// If it's a joint, freeze rotations.
+		if ( $isJoint[1] == "joint" )
+			{
+			delete "tmpConstraint";
+			makeIdentity -apply true -t 0 -r 1 -s 0 -n 0 $destinationObject;
+			}
+		}
+
+	// Delete the orient-constraint, as if nothing happened.
+	if (`objExists tmpConstraint`)
+		delete "tmpConstraint";
+
+	// Debug info.
+	//print "\n ----------------------";
+	//print ("\n$destinationObject = " + $destinationObject);
+	//print "\n$childrenTransform = "; print $childrenTransform;
+
+	// Re-parent the transform children to the selected object.
+	if ( $childrenTransform[0] != "" )
+		{
+		for ($i=0;$i<`size $childrenTransform`;$i++)
+			{
+			if (`objExists $childrenTransform[$i]`)
+				parent $childrenTransform[$i] $destinationObject ;
+			}
+		}
+	}
+}
+matchPivot ("pCone2", "pCone1", 1,1 )
