@@ -28,7 +28,7 @@ class lineUpUVs(object):
         if pm.window("lineUpWin", exists=1):
             pm.deleteUI("lineUpWin", window=1)
         w = 180
-        self.window = pm.window("lineUpWin", t="AlignUVs", s=0, mb=1, rtf=1, wh=(w, 25))
+        self.window = pm.window("lineUpWin", t="AlignUVs", s=0, mb=1, rtf=1, wh=(w, 25),mxb=0,mnb=0)
 
         pm.columnLayout("mainColumn", p="lineUpWin", columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
         pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=4, columnWidth4=(30, 30, 30, 40), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
@@ -49,7 +49,7 @@ class lineUpUVs(object):
         pm.text("Pixel Ratio", al="left")
         pm.intField("ratioFld", value=50)
         pm.button(l="Rescale UVs", c=self.scaleUVRatio)
-
+        """
         pm.separator(p="mainColumn", style='in')
         pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
         pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
@@ -57,9 +57,9 @@ class lineUpUVs(object):
         pm.menuItem(p="listPopUp", l="Select All In List", c=self.selectAllInList)
         pm.menuItem(p="listPopUp", l="Remove Selected From List", c=self.rmvSelFromList)
         pm.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
-
+        
         pm.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
-
+        """
         pm.showWindow(self.window)
 
     def layoutUVsToUDIM(self, *args):
@@ -194,6 +194,13 @@ class lineUpUVs(object):
         unfold = 0.0009765625 * (densityField)
         ratioField = unfold * mult
         pm.unfold(i=0, us=True, s=ratioField)
-
+    
+    def rotateEachShell(self,*args):
+        sels = pm.ls(sl=1)
+        for i, x in enumerate(sels):
+            x = x.getShape()
+            pm.select('{0}.map[:]'.format(x), r=1)
+            pm.mel.eval("polyRotateUVs 180")
+            pm.select(sels, r=1)
 
 lineUpUVs()._UI()
