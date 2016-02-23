@@ -32,18 +32,31 @@ class mirrorSelectedShapes(object):
     def CreateMirrorShape(self,base_shape,sculpt_shape):
         if "L_" in sculpt_shape and "left" not in sculpt_shape and "right" not in sculpt_shape:
             newShape="R_{0}".format(sculpt_shape.split('L_')[1])
+            print sculpt_shape,newShape
         elif "R_" in sculpt_shape and "left" not in sculpt_shape and "right" not in sculpt_shape:
-            newShape="L_{0}".format(sculpt_shape.split('L_')[1])
+            newShape="L_{0}".format(sculpt_shape.split('R_')[1])
+            print sculpt_shape,newShape
         elif "L_" in sculpt_shape and "left" in sculpt_shape and "right" not in sculpt_shape:
             newShape="R_{0}right{1}".format(sculpt_shape.split('L_')[1].split('left')[0],sculpt_shape.split('L_')[1].split('left')[1])
+            print sculpt_shape,newShape
         elif "L_" in sculpt_shape and "left" not in sculpt_shape and "right" in sculpt_shape:
             newShape="R_{0}left{1}".format(sculpt_shape.split('L_')[1].split('right')[0],sculpt_shape.split('L_')[1].split('right')[1])
+            print sculpt_shape,newShape
         elif "R_" in sculpt_shape and "left" in sculpt_shape and "right" not in sculpt_shape:
-            newShape="L_{0}right{1}".format(sculpt_shape.split('R_')[1].split('left')[0],sculpt_shape.split('L_')[1].split('left')[1])
+            newShape="L_{0}right{1}".format(sculpt_shape.split('R_')[1].split('left')[0],sculpt_shape.split('R_')[1].split('left')[1])
+            print sculpt_shape,newShape
         elif "R_" in sculpt_shape and "left" not in sculpt_shape and "right" in sculpt_shape:
-            newShape="L_{0}left{1}".format(sculpt_shape.split('R_')[1].split('right')[0],sculpt_shape.split('L_')[1].split('right')[1])
+            newShape="L_{0}left{1}".format(sculpt_shape.split('R_')[1].split('right')[0],sculpt_shape.split('R_')[1].split('right')[1])
+            print sculpt_shape,newShape
+        elif "M_" in sculpt_shape and "left" not in sculpt_shape and "right" in sculpt_shape:
+            newShape="{0}left{1}".format(sculpt_shape.split('right')[0],sculpt_shape.split('right')[1])
+            print sculpt_shape,newShape
+        elif "M_" in sculpt_shape and "left" in sculpt_shape and "right" not in sculpt_shape:
+            newShape="{0}right{1}".format(sculpt_shape.split('left')[0],sculpt_shape.split('left')[1])
+            print sculpt_shape,newShape
         else:
             newShape="Mirrored_{0}".format(sculpt_shape)
+            print sculpt_shape,newShape
 
         #Create Wrap and Negative shape
         cmds.duplicate(base_shape, name="baseWrap")
@@ -59,10 +72,10 @@ class mirrorSelectedShapes(object):
         cmds.select(cl=True)
         cmds.select('baseWrap')
         cmds.select('baseScaleNeg', add=True)
-        wrap_node = cmds.CreateWrap()[0]
+        cmds.CreateWrap()
         cmds.select(cl=True)
         
-        cmds.setAttr("{0}.exclusiveBind".format(wrap_node), 1)
+        cmds.setAttr("wrap1.exclusiveBind", 1)
 
         #Now turn on our Negated blendShpe
         cmds.setAttr("TempBlend."+sculpt_shape, 1)
