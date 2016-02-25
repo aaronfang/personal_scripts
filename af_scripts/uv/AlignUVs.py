@@ -50,6 +50,10 @@ class lineUpUVs(object):
         pm.intField("ratioFld", value=50)
         pm.button(l="Rescale UVs", c=self.scaleUVRatio)
 
+        pm.pm.separator(p="mainColumn", style='in')
+        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(10, 30, 80), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
+        pm.button(l="Rotate 180", c=self.rotateEachShell)
+
         # # pm.separator(p="mainColumn", style='in')
         # pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
         # pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
@@ -204,3 +208,48 @@ class lineUpUVs(object):
             pm.select(sels, r=1)
 
 lineUpUVs()._UI()
+'''
+import pymel.core as pm
+import math
+
+#def lineUpU(self, *args)
+sels = pm.ls(sl=1)
+gap = 0.03
+W = []
+for x in sels:
+    x = x.getShape()
+    pm.select('{0}.map[:]'.format(x), r=1)
+    buv = pm.polyEvaluate(x, b2=1)
+    w = abs(buv[0][1] - buv[0][0])
+    W.append(w)
+
+for x in sels:
+    x = x.getShape()
+    pm.select('{0}.map[:]'.format(x), r=1)
+    buv = pm.polyEvaluate(x, b2=1)
+    h = abs(buv[1][1] - buv[1][0])
+    self.H.append(h)
+
+for i, x in enumerate(sels):
+    initGap = 0.003
+    width = sum(W[0:i])
+    hight = sum(H[0:i])
+    UDIM = int(((math.floor(buv[0][1])+1)+(math.floor(buv[1][1])*10))-10)
+    x = x.getShape()
+    pm.select('{0}.map[:]'.format(x), r=1)
+    buv = pm.polyEvaluate(x, b2=1)
+    if i == 0:
+        pm.polyEditUV(u=-buv[0][0] + initGap, v=-buv[1][0] + initGap)
+
+    elif buv[0][1]>=UDIM and buv[1][1]<UDIM:
+        m.poluEditUV(u=-buv[0][0] + initGap,v=-buv[1][0] + initGap + hight + gap*i )
+
+    elif buv[0][1]<UDIM and buv[1][1]>=UDIM:
+        m.poluEditUV(u=,v=)
+
+    elif buv[0][1]<UDIM and buv[1][1]<UDIM:
+        pm.polyEditUV(u=-buv[0][0] + initGap + width + gap * i, v=-buv[1][0] + initGap)
+
+pm.select(sels, r=1)
+W = []
+'''
