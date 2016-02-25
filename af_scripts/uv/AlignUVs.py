@@ -49,17 +49,17 @@ class lineUpUVs(object):
         pm.text("Pixel Ratio", al="left")
         pm.intField("ratioFld", value=50)
         pm.button(l="Rescale UVs", c=self.scaleUVRatio)
-        """
-        pm.separator(p="mainColumn", style='in')
-        pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
-        pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
-        pm.popupMenu("listPopUp", p="selListTextScroll")
-        pm.menuItem(p="listPopUp", l="Select All In List", c=self.selectAllInList)
-        pm.menuItem(p="listPopUp", l="Remove Selected From List", c=self.rmvSelFromList)
-        pm.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
-        
-        pm.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
-        """
+
+        # # pm.separator(p="mainColumn", style='in')
+        # pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
+        # pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
+        # pm.popupMenu("listPopUp", p="selListTextScroll")
+        # pm.menuItem(p="listPopUp", l="Select All In List", c=self.selectAllInList)
+        # pm.menuItem(p="listPopUp", l="Remove Selected From List", c=self.rmvSelFromList)
+        # pm.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
+        #
+        # pm.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
+        # """
         pm.showWindow(self.window)
 
     def layoutUVsToUDIM(self, *args):
