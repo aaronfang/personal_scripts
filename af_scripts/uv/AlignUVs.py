@@ -212,44 +212,29 @@ lineUpUVs()._UI()
 import pymel.core as pm
 import math
 
-#def lineUpU(self, *args)
 sels = pm.ls(sl=1)
 gap = 0.03
-W = []
-for x in sels:
-    x = x.getShape()
-    pm.select('{0}.map[:]'.format(x), r=1)
-    buv = pm.polyEvaluate(x, b2=1)
-    w = abs(buv[0][1] - buv[0][0])
-    W.append(w)
-
-for x in sels:
-    x = x.getShape()
-    pm.select('{0}.map[:]'.format(x), r=1)
-    buv = pm.polyEvaluate(x, b2=1)
-    h = abs(buv[1][1] - buv[1][0])
-    self.H.append(h)
+initGap = 0.003
 
 for i, x in enumerate(sels):
-    initGap = 0.003
-    width = sum(W[0:i])
-    hight = sum(H[0:i])
-    UDIM = int(((math.floor(buv[0][1])+1)+(math.floor(buv[1][1])*10))-10)
     x = x.getShape()
     pm.select('{0}.map[:]'.format(x), r=1)
+    # get current place bbox
     buv = pm.polyEvaluate(x, b2=1)
+    
+    
     if i == 0:
-        pm.polyEditUV(u=-buv[0][0] + initGap, v=-buv[1][0] + initGap)
-
-    elif buv[0][1]>=UDIM and buv[1][1]<UDIM:
-        m.poluEditUV(u=-buv[0][0] + initGap,v=-buv[1][0] + initGap + hight + gap*i )
-
-    elif buv[0][1]<UDIM and buv[1][1]>=UDIM:
-        m.poluEditUV(u=,v=)
-
-    elif buv[0][1]<UDIM and buv[1][1]<UDIM:
-        pm.polyEditUV(u=-buv[0][0] + initGap + width + gap * i, v=-buv[1][0] + initGap)
-
-pm.select(sels, r=1)
-W = []
+        # move to the init place
+        pm.polyEditUV(x,u=-buv[0][0] + initGap, v=-buv[1][0] + initGap)
+    
+    else:
+        # get the new bbox and previous bbox
+        buv = pm.polyEvaluate(x, b2=1)
+        buv_last = pm.polyEvaluate(sels[i-1], b2=1)
+        UDIM = int((math.floor(buv[0][1])+1)+(math.floor(buv[1][1])*10))
+        UDIM_last = int((math.floor(buv_last[0][1])+1)+(math.floor(buv_last[1][1])*10))
+        
+        # move to the place last UV shell
+        pm.polyEditUV(u=-buv_last[0][0], v=-buv_last[1][0])
+        print x
 '''
