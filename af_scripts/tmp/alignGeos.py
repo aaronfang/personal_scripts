@@ -25,6 +25,22 @@ def calc_angle(sx,sy,ex,ey):
     return angle
 
 
+import maya.cmds as cmds
+
+v1 = [10, -27, 0]
+#for X axis
+v2 = [1, 0, 0]
+
+v1_u = v1 / numpy.linalg.norm(v1)
+v2_u = v2 / numpy.linalg.norm(v2)
+
+print v1_u
+print v2_u
+
+angle = numpy.arccos(numpy.dot(v1_u, v2_u))
+print angle
+
+
 # select 2 verts to create a 1 degree curve with a point at center.
 get_verts = cmds.ls(sl=True,fl=True)
 va = cmds.pointPosition(get_verts[0])
