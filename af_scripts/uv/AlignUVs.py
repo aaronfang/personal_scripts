@@ -209,32 +209,44 @@ class lineUpUVs(object):
 
 lineUpUVs()._UI()
 '''
-import pymel.core as pm
+import maya.cmds as cmds
 import math
 
-sels = pm.ls(sl=1)
-gap = 0.03
+sels = cmds.ls(os=1)
+gap_w = 0.1
+gap_h = 0.01
 initGap = 0.003
+UDIM_limit = 10
 
 for i, x in enumerate(sels):
-    x = x.getShape()
-    pm.select('{0}.map[:]'.format(x), r=1)
-    # get current place bbox
-    buv = pm.polyEvaluate(x, b2=1)
-    
-    
-    if i == 0:
+    #x = x.getShape()
+    cmds.select('{0}.map[:]'.format(x), r=1)
+
+    if i==0:
         # move to the init place
-        pm.polyEditUV(x,u=-buv[0][0] + initGap, v=-buv[1][0] + initGap)
-    
-    else:
-        # get the new bbox and previous bbox
-        buv = pm.polyEvaluate(x, b2=1)
-        buv_last = pm.polyEvaluate(sels[i-1], b2=1)
-        UDIM = int((math.floor(buv[0][1])+1)+(math.floor(buv[1][1])*10))
-        UDIM_last = int((math.floor(buv_last[0][1])+1)+(math.floor(buv_last[1][1])*10))
-        
-        # move to the place last UV shell
-        pm.polyEditUV(u=-buv_last[0][0], v=-buv_last[1][0])
-        print x
+        cmds.polyEditUV(u=-cmds.polyEvaluate(x, b2=1)[0][0] + initGap, v=-cmds.polyEvaluate(x, b2=1)[1][0] + initGap)
+
+    elif i>=1:
+        # get the size of the last shell
+        w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+        h_last = cmds.polyEvaluate(sels[i-1], b2=1)[1][1]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+        # calc the distance to the last shell
+        dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+        dist_v = cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+        # move current shell to the last shell
+        cmds.polyEditUV(u=-dist_u+w_last+gap_w, v=-dist_v)
+        # get the UDIM ID of the current shell and the last shell
+        UDIM = int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))
+        UDIM_last = int((math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[1][1])*10))
+        # if shell U is out of UDIM
+        if UDIM-UDIM_last==1:
+            new_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(UDIM-2)
+            new_v = -(cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[0:i], b2=1)[1][1])+gap_h
+            cmds.polyEditUV(u=new_u, v=new_v)
+            if int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last>1:
+                new2_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(UDIM_new-UDIM_limit)
+                new2_v = -cmds.polyEvaluate(x, b2=1)[1][0] + initGap
+                cmds.polyEditUV(u=new2_u, v=new2_v)
+
+cmds.select(sels,r=1)
 '''
