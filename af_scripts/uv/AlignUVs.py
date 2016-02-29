@@ -50,7 +50,7 @@ class lineUpUVs(object):
         pm.intField("ratioFld", value=50)
         pm.button(l="Rescale UVs", c=self.scaleUVRatio)
 
-        pm.pm.separator(p="mainColumn", style='in')
+        pm.separator(p="mainColumn", style='in')
         pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(10, 30, 80), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
         pm.button(l="Rotate 180", c=self.rotateEachShell)
 
