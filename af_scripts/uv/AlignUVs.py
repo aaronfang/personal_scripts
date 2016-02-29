@@ -6,8 +6,9 @@ This tool is design for the modeler to layout their UVs in more efficient way.
 - store and select a list of objects
 added:
     - scale by ratio
+    - align in UDIMs both U and V
+    - each UV shell rotate 180
 need to add:
-	- UV rotate 180
 	- scale to last
 	- scale by ratio (with group)
 """
@@ -30,11 +31,16 @@ class lineUpUVs(object):
         w = 180
         self.window = pm.window("lineUpWin", t="AlignUVs", s=0, mb=1, rtf=1, wh=(w, 25),mxb=0,mnb=0)
 
-        pm.columnLayout("mainColumn", p="lineUpWin", columnAttach=('both', 2), rowSpacing=10, columnWidth=w)
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=4, columnWidth4=(30, 30, 30, 40), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
-        self.floatField = pm.floatField("gapValueField", v=0.003)
-        self.button = pm.button(l="U", c=self.lineUpU)
-        self.button = pm.button(l="V", c=self.lineUpV)
+        pm.columnLayout("mainColumn", p="lineUpWin", columnAttach=('both', 0.5), rowSpacing=10, columnWidth=w)
+        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=4, columnWidth4=(55, 55, 30, 30), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
+        self.floatField = pm.floatField("gapWValueField", v=0.003)
+        self.floatField = pm.floatField("gapHValueField", v=0.003)
+        self.button = pm.button(l="U", c=self.lineup_U)
+        self.button = pm.button(l="V", c=self.lineup_V)
+
+        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(55, 55, 40), adjustableColumn=3, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+        self.button = pm.button(l="U-UDIM", c=self.lineup_U_in_UDIM)
+        self.button = pm.button(l="V-UDIM", c=self.lineup_V_in_UDIM)
         self.button = pm.button(l="UDIM", c=self.layoutUVsToUDIM)
 
         pm.separator(p="mainColumn", style='in')
@@ -54,6 +60,7 @@ class lineUpUVs(object):
         pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(10, 30, 80), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
         pm.button(l="Rotate 180", c=self.rotateEachShell)
 
+        pm.separator(p="mainColumn", style='in')
         # # pm.separator(p="mainColumn", style='in')
         # pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
         # pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
@@ -63,7 +70,7 @@ class lineUpUVs(object):
         # pm.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
         #
         # pm.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
-        # """
+
         pm.showWindow(self.window)
 
     def layoutUVsToUDIM(self, *args):
@@ -74,53 +81,146 @@ class lineUpUVs(object):
             pm.polyEditUV(u=i % 10, v=int(math.floor(i / 10)))
         pm.select(sels, r=1)
 
-    def lineUpU(self, *args):
-        sels = pm.ls(sl=1)
-        gap = pm.floatField("gapValueField", q=True, v=True)
-
-        for x in sels:
-            x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            buv = pm.polyEvaluate(x, b2=1)
-            w = abs(buv[0][1] - buv[0][0])
-            self.W.append(w)
+    def lineup_U(self,*args):
+        sels = cmds.ls(os=1)
+        gap_w = pm.floatField("gapWValueField", q=True, v=True)
+        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        initGap = 0.003
+        UDIM_limit = 10
+        fst_in_UDIM = 0
 
         for i, x in enumerate(sels):
-            initGap = 0.003
-            x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            buv = pm.polyEvaluate(x, b2=1)
+            cmds.select('{0}.map[:]'.format(x), r=1)
+
             if i == 0:
-                pm.polyEditUV(u=-buv[0][0] + initGap, v=-buv[1][0] + initGap)
-            else:
-                width = sum(self.W[0:i])
-                pm.polyEditUV(u=-buv[0][0] + initGap + width + gap * i, v=-buv[1][0] + initGap)
-        pm.select(sels, r=1)
-        self.W = []
+                # move to the init place
+                cmds.polyEditUV(u=-cmds.polyEvaluate(x, b2=1)[0][0] + initGap, v=-cmds.polyEvaluate(x, b2=1)[1][0] + initGap)
 
-    def lineUpV(self, *args):
-        sels = pm.ls(sl=1)
-        gap = pm.floatField("gapValueField", q=True, v=True)
+            elif i >= 1:
+                # get the U size of the last shell
+                w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                # calc the distance to the last shell
+                dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                dist_v = cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # move current shell to the last shell
+                cmds.polyEditUV(u=-dist_u+w_last+gap_w, v=-dist_v)
+        cmds.select(sels,r=1)
 
-        for x in sels:
-            x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            buv = pm.polyEvaluate(x, b2=1)
-            h = abs(buv[1][1] - buv[1][0])
-            self.H.append(h)
+    def lineup_U_in_UDIM(self,*args):
+        sels = cmds.ls(os=1)
+        gap_w = pm.floatField("gapWValueField", q=True, v=True)
+        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        initGap = 0.003
+        UDIM_limit = 10
+        fst_in_UDIM = 0
 
         for i, x in enumerate(sels):
-            initGap = 0.003
-            x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            buv = pm.polyEvaluate(x, b2=1)
+            cmds.select('{0}.map[:]'.format(x), r=1)
+
             if i == 0:
-                pm.polyEditUV(v=-buv[1][1] - initGap, u=-buv[0][0] + initGap)
-            else:
-                width = sum(self.H[0:i])
-                pm.polyEditUV(v=-buv[1][1] - initGap - width - gap * i, u=-buv[0][0] + initGap)
-        pm.select(sels, r=1)
-        self.H = []
+                # move to the init place
+                cmds.polyEditUV(u=-cmds.polyEvaluate(x, b2=1)[0][0] + initGap, v=-cmds.polyEvaluate(x, b2=1)[1][0] + initGap)
+
+            elif i >= 1:
+                # get the U size of the last shell
+                w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                # calc the distance to the last shell
+                dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                dist_v = cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # move current shell to the last shell
+                cmds.polyEditUV(u=-dist_u+w_last+gap_w, v=-dist_v)
+                # get the UDIM ID of the current shell and the last shell
+                UDIM = int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))
+                UDIM_last = int((math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[1][1])*10))
+                # if shell U is out of UDIM
+                if UDIM-UDIM_last==1:
+                    new_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(UDIM-2)
+                    new_v = -(cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[fst_in_UDIM:i], b2=1)[1][1])+gap_h
+                    cmds.polyEditUV(u=new_u, v=new_v)
+                    # if shell V is out of UDIM
+                    if int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last==10:
+                        fst_in_UDIM = i
+                        new2_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_limit)
+                        new2_v = -cmds.polyEvaluate(x, b2=1)[1][0] + initGap
+                        cmds.polyEditUV(u=new2_u, v=new2_v)
+                elif int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last==10:
+                    fst_in_UDIM = i
+                    new2_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_limit)
+                    new2_v = -cmds.polyEvaluate(x, b2=1)[1][0] + initGap
+                    cmds.polyEditUV(u=new2_u, v=new2_v)
+        cmds.select(sels,r=1)
+
+    def lineup_V(self,*args):
+        sels = cmds.ls(os=1)
+        gap_w = pm.floatField("gapWValueField", q=True, v=True)
+        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        initGap = 0.003
+        UDIM_limit = 10
+        fst_in_UDIM = 0
+
+        for i, x in enumerate(sels):
+            cmds.select('{0}.map[:]'.format(x), r=1)
+
+            if i == 0:
+                # move to the init place
+                cmds.polyEditUV(u=-cmds.polyEvaluate(x, b2=1)[0][0] + initGap, v=-cmds.polyEvaluate(x, b2=1)[1][0] + initGap)
+
+            elif i >= 1:
+                # get the size of the last shell
+                w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                h_last = cmds.polyEvaluate(sels[i-1], b2=1)[1][1]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # calc the distance to the last shell
+                dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                dist_v = cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # move current shell to the last shell
+                cmds.polyEditUV(u=-dist_u, v=-dist_v+h_last+gap_h)
+        cmds.select(sels,r=1)
+
+    def lineup_V_in_UDIM(self,*args):
+        sels = cmds.ls(os=1)
+        gap_w = pm.floatField("gapWValueField", q=True, v=True)
+        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        initGap = 0.003
+        UDIM_limit = 10
+        fst_in_UDIM = 0
+
+        for i, x in enumerate(sels):
+            cmds.select('{0}.map[:]'.format(x), r=1)
+
+            if i == 0:
+                # move to the init place
+                cmds.polyEditUV(u=-cmds.polyEvaluate(x, b2=1)[0][0] + initGap, v=-cmds.polyEvaluate(x, b2=1)[1][0] + initGap)
+
+            elif i >= 1:
+                # get the size of the last shell
+                w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                h_last = cmds.polyEvaluate(sels[i-1], b2=1)[1][1]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # calc the distance to the last shell
+                dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
+                dist_v = cmds.polyEvaluate(x, b2=1)[1][0]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
+                # move current shell to the last shell
+                cmds.polyEditUV(u=-dist_u, v=-dist_v+h_last+gap_h)
+                # get the UDIM ID of the current shell and the last shell
+                UDIM = int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))
+                UDIM_last = int((math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(sels[i-1], b2=1)[1][1])*10))
+                # if shell V is out of UDIM
+                if int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last==10:
+                    new_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[fst_in_UDIM:i], b2=1)[0][1])+gap_w
+                    new_v = -(cmds.polyEvaluate(x, b2=1)[1][0]-initGap)#+int(math.floor((UDIM-11) / 10))
+                    cmds.polyEditUV(u=new_u, v=new_v)
+                    if int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last==1:
+                        new_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-initGap)+(int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-1)
+                        new_v = -(cmds.polyEvaluate(x, b2=1)[1][0]-initGap)#+int(math.floor((UDIM-11) / 10))
+                        cmds.polyEditUV(u=new_u, v=new_v)
+                    # elif cmds.polyEvaluate(x, b2=1)[0][0] > 10:
+                    #     new_u = -cmds.polyEvaluate(x, b2=1)[0][0]+initGap
+                    #     new_v = cmds.polyEvaluate(x, b2=1)[1][0]+1
+                    #     cmds.polyEditUV(u=new_u, v=new_v)
+                elif int((math.floor(cmds.polyEvaluate(x, b2=1)[0][1])+1)+(math.floor(cmds.polyEvaluate(x, b2=1)[1][1])*10))-UDIM_last==1:
+                    new_u = -(cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[fst_in_UDIM:i], b2=1)[0][1])+gap_w
+                    new_v = -(cmds.polyEvaluate(x, b2=1)[1][0]-initGap)+int(math.floor((UDIM-11) / 10))
+                    cmds.polyEditUV(u=new_u, v=new_v)
+        cmds.select(sels,r=1)
 
     def RK_Geometric(self, *args):
         if pm.pluginInfo("Roadkill", q=1, l=1) == False:
@@ -198,7 +298,7 @@ class lineUpUVs(object):
         unfold = 0.0009765625 * (densityField)
         ratioField = unfold * mult
         pm.unfold(i=0, us=True, s=ratioField)
-    
+
     def rotateEachShell(self,*args):
         sels = pm.ls(sl=1)
         for i, x in enumerate(sels):
