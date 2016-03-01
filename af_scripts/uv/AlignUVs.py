@@ -13,81 +13,103 @@ need to add:
 	- scale by ratio (with group)
 """
 
-import pymel.core as pm
+import maya.cmds as cmds
 import math
 
 
-class lineUpUVs(object):
+class LineUpUVs(object):
     def __init__(self):
-        self.Sels = []
-        self.W = []
-        self.H = []
         self.Sels = []
         pass
 
     def _UI(self):
-        if pm.window("lineUpWin", exists=1):
-            pm.deleteUI("lineUpWin", window=1)
+        if cmds.window("lineUpWin", exists=1):
+            cmds.deleteUI("lineUpWin", window=1)
         w = 180
-        self.window = pm.window("lineUpWin", t="AlignUVs", s=0, mb=1, rtf=1, wh=(w, 25),mxb=0,mnb=0)
+        self.window = cmds.window("lineUpWin", t="AlignUVs", s=0, mb=1, rtf=1, wh=(w, 25),mxb=0,mnb=0)
 
-        pm.columnLayout("mainColumn", p="lineUpWin", columnAttach=('both', 0.5), rowSpacing=10, columnWidth=w)
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=4, columnWidth4=(55, 55, 30, 30), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
-        self.floatField = pm.floatField("gapWValueField", v=0.003)
-        self.floatField = pm.floatField("gapHValueField", v=0.003)
-        self.button = pm.button(l="U", c=self.lineup_U)
-        self.button = pm.button(l="V", c=self.lineup_V)
+        cmds.columnLayout("mainColumn", p="lineUpWin",
+                          columnAttach=('both', 0.5),
+                          rowSpacing=10,
+                          columnWidth=w)
+        cmds.rowLayout(p="mainColumn", w=w, h=25,
+                       numberOfColumns=4,
+                       columnWidth4=(55, 55, 30, 30),
+                       adjustableColumn=1,
+                       columnAlign=(1, 'right'),
+                       columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
+        self.floatField = cmds.floatField("gapWValueField", v=0.003)
+        self.floatField = cmds.floatField("gapHValueField", v=0.003)
+        self.button = cmds.button(l="U", c=self.lineup_U)
+        self.button = cmds.button(l="V", c=self.lineup_V)
 
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(55, 55, 40), adjustableColumn=3, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
-        self.button = pm.button(l="U-UDIM", c=self.lineup_U_in_UDIM)
-        self.button = pm.button(l="V-UDIM", c=self.lineup_V_in_UDIM)
-        self.button = pm.button(l="UDIM", c=self.layoutUVsToUDIM)
+        cmds.rowLayout(p="mainColumn", w=w, h=25,
+                       numberOfColumns=3,
+                       columnWidth3=(55, 55, 40),
+                       adjustableColumn=3,
+                       columnAlign=(1, 'right'),
+                       columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0)])
+        self.button = cmds.button(l="U-UDIM", c=self.lineup_U_in_UDIM)
+        self.button = cmds.button(l="V-UDIM", c=self.lineup_V_in_UDIM)
+        self.button = cmds.button(l="UDIM", c=self.layoutUVsToUDIM)
 
-        pm.separator(p="mainColumn", style='in')
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=4, columnWidth4=(30, 30, 30, 40), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
-        self.button = pm.button(l="Scale2Src", c=self.RK_ScaleToSrc)
-        self.button = pm.button(l="G", c=self.RK_Geometric)
-        self.button = pm.button(l="O", c=self.RK_Organic)
-        self.button = pm.button(l="S", c=self.RK_Straighten)
+        cmds.separator(p="mainColumn", style='in')
+        cmds.rowLayout(p="mainColumn", w=w, h=25,
+                       numberOfColumns=4,
+                       columnWidth4=(30, 30, 30, 40),
+                       adjustableColumn=1,
+                       columnAlign=(1, 'right'),
+                       columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
+        self.button = cmds.button(l="Scale2Src", c=self.RK_ScaleToSrc)
+        self.button = cmds.button(l="G", c=self.RK_Geometric)
+        self.button = cmds.button(l="O", c=self.RK_Organic)
+        self.button = cmds.button(l="S", c=self.RK_Straighten)
 
-        pm.separator(p="mainColumn", style='in')
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(10, 30, 80), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
-        pm.text("Pixel Ratio", al="left")
-        pm.intField("ratioFld", value=50)
-        pm.button(l="Rescale UVs", c=self.scaleUVRatio)
+        cmds.separator(p="mainColumn", style='in')
+        cmds.rowLayout(p="mainColumn", w=w, h=25,
+                       numberOfColumns=3,
+                       columnWidth3=(10, 30, 80),
+                       adjustableColumn=1,
+                       columnAlign=(1, 'right'),
+                       columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
+        cmds.text("Pixel Ratio", al="left")
+        cmds.intField("ratioFld", value=50)
+        cmds.button(l="Rescale UVs", c=self.scaleUVRatio)
 
-        pm.separator(p="mainColumn", style='in')
-        pm.rowLayout(p="mainColumn", w=w, h=25, numberOfColumns=3, columnWidth3=(10, 30, 80), adjustableColumn=1, columnAlign=(1, 'right'), columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
-        pm.button(l="Rotate 180", c=self.rotateEachShell)
+        cmds.separator(p="mainColumn", style='in')
+        cmds.rowLayout(p="mainColumn", w=w, h=25,
+                       numberOfColumns=3,
+                       columnWidth3=(10, 30, 80),
+                       adjustableColumn=1,
+                       columnAlign=(1, 'right'),
+                       columnAttach=[(1, 'both', 5), (2, 'both', 0), (3, 'both', 5)])
+        cmds.button(l="Rotate 180", c=self.rotateEachShell)
 
-        pm.separator(p="mainColumn", style='in')
-        # # pm.separator(p="mainColumn", style='in')
-        # pm.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
-        # pm.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
-        # pm.popupMenu("listPopUp", p="selListTextScroll")
-        # pm.menuItem(p="listPopUp", l="Select All In List", c=self.selectAllInList)
-        # pm.menuItem(p="listPopUp", l="Remove Selected From List", c=self.rmvSelFromList)
-        # pm.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
+        cmds.separator(p="mainColumn", style='in')
+        # # cmds.separator(p="mainColumn", style='in')
+        # cmds.button(p="mainColumn", l="Store Selection", c=self.storeSelToList)
+        # cmds.textScrollList("selListTextScroll", p="mainColumn", numberOfRows=5, allowMultiSelection=True)
+        # cmds.popupMenu("listPopUp", p="selListTextScroll")
+        # cmds.menuItem(p="listPopUp", l="Select All In List", c=self.selectAllInList)
+        # cmds.menuItem(p="listPopUp", l="Remove Selected From List", c=self.rmvSelFromList)
+        # cmds.menuItem(p="listPopUp", l="Remove All From List", c=self.rmvAllFromList)
         #
-        # pm.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
+        # cmds.button(p="mainColumn", l="Select", c=self.selectHighlightedInList)
 
-        pm.showWindow(self.window)
+        cmds.showWindow(self.window)
 
     def layoutUVsToUDIM(self, *args):
-        sels = pm.ls(sl=1)
+        sels = cmds.ls(sl=1)
         for i, x in enumerate(sels):
             x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            pm.polyEditUV(u=i % 10, v=int(math.floor(i / 10)))
-        pm.select(sels, r=1)
+            cmds.select('{0}.map[:]'.format(x), r=1)
+            cmds.polyEditUV(u=i % 10, v=int(math.floor(i / 10)))
+        cmds.select(sels, r=1)
 
     def lineup_U(self,*args):
         sels = cmds.ls(os=1)
-        gap_w = pm.floatField("gapWValueField", q=True, v=True)
-        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        gap_w = cmds.floatField("gapWValueField", q=True, v=True)
         initGap = 0.003
-        UDIM_limit = 10
-        fst_in_UDIM = 0
 
         for i, x in enumerate(sels):
             cmds.select('{0}.map[:]'.format(x), r=1)
@@ -108,8 +130,8 @@ class lineUpUVs(object):
 
     def lineup_U_in_UDIM(self,*args):
         sels = cmds.ls(os=1)
-        gap_w = pm.floatField("gapWValueField", q=True, v=True)
-        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        gap_w = cmds.floatField("gapWValueField", q=True, v=True)
+        gap_h = cmds.floatField("gapHValueField", q=True, v=True)
         initGap = 0.003
         UDIM_limit = 10
         fst_in_UDIM = 0
@@ -152,11 +174,8 @@ class lineUpUVs(object):
 
     def lineup_V(self,*args):
         sels = cmds.ls(os=1)
-        gap_w = pm.floatField("gapWValueField", q=True, v=True)
-        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        gap_h = cmds.floatField("gapHValueField", q=True, v=True)
         initGap = 0.003
-        UDIM_limit = 10
-        fst_in_UDIM = 0
 
         for i, x in enumerate(sels):
             cmds.select('{0}.map[:]'.format(x), r=1)
@@ -167,7 +186,6 @@ class lineUpUVs(object):
 
             elif i >= 1:
                 # get the size of the last shell
-                w_last = cmds.polyEvaluate(sels[i-1], b2=1)[0][1]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
                 h_last = cmds.polyEvaluate(sels[i-1], b2=1)[1][1]-cmds.polyEvaluate(sels[i-1], b2=1)[1][0]
                 # calc the distance to the last shell
                 dist_u = cmds.polyEvaluate(x, b2=1)[0][0]-cmds.polyEvaluate(sels[i-1], b2=1)[0][0]
@@ -178,10 +196,9 @@ class lineUpUVs(object):
 
     def lineup_V_in_UDIM(self,*args):
         sels = cmds.ls(os=1)
-        gap_w = pm.floatField("gapWValueField", q=True, v=True)
-        gap_h = pm.floatField("gapHValueField", q=True, v=True)
+        gap_w = cmds.floatField("gapWValueField", q=True, v=True)
+        gap_h = cmds.floatField("gapHValueField", q=True, v=True)
         initGap = 0.003
-        UDIM_limit = 10
         fst_in_UDIM = 0
 
         for i, x in enumerate(sels):
@@ -223,88 +240,87 @@ class lineUpUVs(object):
         cmds.select(sels,r=1)
 
     def RK_Geometric(self, *args):
-        if pm.pluginInfo("Roadkill", q=1, l=1) == False:
-            pm.loadPlugin("Roadkill")
-        pm.mel.eval("RoadkillProGeometric")
+        if not cmds.pluginInfo("Roadkill", q=1, l=1):
+            cmds.loadPlugin("Roadkill")
+        cmds.mel.eval("RoadkillProGeometric")
 
     def RK_Organic(self, *args):
-        if pm.pluginInfo("Roadkill", q=1, l=1) == False:
-            pm.loadPlugin("Roadkill")
-        pm.mel.eval("RoadkillProOrganic")
+        if not cmds.pluginInfo("Roadkill", q=1, l=1):
+            cmds.loadPlugin("Roadkill")
+        cmds.mel.eval("RoadkillProOrganic")
 
     def RK_Straighten(self, *args):
-        if pm.pluginInfo("Roadkill", q=1, l=1) == False:
-            pm.loadPlugin("Roadkill")
-        pm.mel.eval("RoadkillProStraighten")
+        if not cmds.pluginInfo("Roadkill", q=1, l=1):
+            cmds.loadPlugin("Roadkill")
+        cmds.mel.eval("RoadkillProStraighten")
 
     def RK_ScaleToSrc(self, *args):
-        if pm.pluginInfo("Roadkill", q=1, l=1) == False:
-            pm.loadPlugin("Roadkill")
-        pm.mel.eval("RoadkillProScaleToSource")
+        if not cmds.pluginInfo("Roadkill", q=1, l=1):
+            cmds.loadPlugin("Roadkill")
+        cmds.mel.eval("RoadkillProScaleToSource")
 
     def selMesh(self, *args):
-        getSel = pm.ls(sl=1, fl=1)
-        listItems = pm.textScrollList("selListTextScroll", q=1, ai=1)
-        curSelInList = pm.textScrollList("selListTextScroll", q=1, si=1)
+        getSel = cmds.ls(sl=1, fl=1)
+        listItems = cmds.textScrollList("selListTextScroll", q=1, ai=1)
+        curSelInList = cmds.textScrollList("selListTextScroll", q=1, si=1)
         if len(getSel) == 0:
             if len(curSelInList) != 0:
-                pm.select(curSelInList, r=1)
+                cmds.select(curSelInList, r=1)
             else:
-                pm.select(listItems, r=1)
+                cmds.select(listItems, r=1)
         elif len(getSel) >= 1:
             self.Sels = getSel
-            newList = []
             if len(listItems) == 0:
-                pm.textScrollList("selListTextScroll", e=1, append=self.Sels)
+                cmds.textScrollList("selListTextScroll", e=1, append=self.Sels)
             elif len(listItems) >= 1:
                 if sel not in listItems:
-                    pm.textScrollList("selListTextScroll", e=1, append=sel)
+                    cmds.textScrollList("selListTextScroll", e=1, append=sel)
 
     def storeSelToList(self, *args):
-        getSel = pm.ls(sl=1, fl=1)
-        listItems = pm.textScrollList("selListTextScroll", q=1, ai=1)
+        getSel = cmds.ls(sl=1, fl=1)
+        listItems = cmds.textScrollList("selListTextScroll", q=1, ai=1)
         if len(getSel) >= 1:
             if len(listItems) == 0:
-                pm.textScrollList("selListTextScroll", e=1, append=getSel)
+                cmds.textScrollList("selListTextScroll", e=1, append=getSel)
             elif len(listItems) >= 1:
                 for sel in getSel:
                     if sel not in listItems:
-                        pm.textScrollList("selListTextScroll", e=1, append=sel)
+                        cmds.textScrollList("selListTextScroll", e=1, append=sel)
 
     def rmvSelFromList(self, *args):
-        curSelInList = pm.textScrollList("selListTextScroll", q=1, si=1)
-        pm.textScrollList("selListTextScroll", e=1, ri=curSelInList)
+        curSelInList = cmds.textScrollList("selListTextScroll", q=1, si=1)
+        cmds.textScrollList("selListTextScroll", e=1, ri=curSelInList)
 
     def rmvAllFromList(self, *args):
-        pm.textScrollList("selListTextScroll", e=1, ra=1)
+        cmds.textScrollList("selListTextScroll", e=1, ra=1)
 
     def selectHighlightedInList(self, *args):
-        curSelInList = pm.textScrollList("selListTextScroll", q=1, si=1)
-        listItems = pm.textScrollList("selListTextScroll", q=1, ai=1)
+        curSelInList = cmds.textScrollList("selListTextScroll", q=1, si=1)
+        listItems = cmds.textScrollList("selListTextScroll", q=1, ai=1)
         if len(curSelInList) > 0:
-            pm.select(curSelInList, r=1)
+            cmds.select(curSelInList, r=1)
         elif len(curSelInList) == 0:
-            pm.select(listItems, r=1)
+            cmds.select(listItems, r=1)
 
     def selectAllInList(self, *args):
-        listItems = pm.textScrollList("selListTextScroll", q=1, ai=1)
-        pm.textScrollList("selListTextScroll", e=1, si=listItems)
+        listItems = cmds.textScrollList("selListTextScroll", q=1, ai=1)
+        cmds.textScrollList("selListTextScroll", e=1, si=listItems)
 
     def scaleUVRatio(self, *args):
         res = 1024
         mult = 1
         mult = (mult * (8192 / res)) / 8
-        densityField = pm.intField("ratioFld", q=1, v=1)
-        unfold = 0.0009765625 * (densityField)
+        densityField = cmds.intField("ratioFld", q=1, v=1)
+        unfold = 0.0009765625 * densityField
         ratioField = unfold * mult
-        pm.unfold(i=0, us=True, s=ratioField)
+        cmds.unfold(i=0, us=True, s=ratioField)
 
     def rotateEachShell(self,*args):
-        sels = pm.ls(sl=1)
+        sels = cmds.ls(sl=1)
         for i, x in enumerate(sels):
             x = x.getShape()
-            pm.select('{0}.map[:]'.format(x), r=1)
-            pm.mel.eval("polyRotateUVs 180")
-            pm.select(sels, r=1)
+            cmds.select('{0}.map[:]'.format(x), r=1)
+            cmds.mel.eval("polyRotateUVs 180")
+            cmds.select(sels, r=1)
 
-lineUpUVs()._UI()
+LineUpUVs()._UI()
