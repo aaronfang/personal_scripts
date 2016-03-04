@@ -14,6 +14,7 @@ need to add:
 """
 
 import maya.cmds as cmds
+import maya.mel as mm
 import math
 
 
@@ -56,12 +57,12 @@ class LineUpUVs(object):
         cmds.separator(p="mainColumn", style='in')
         cmds.rowLayout(p="mainColumn", w=w, h=25,
                        numberOfColumns=4,
-                       columnWidth4=(30, 30, 30, 40),
+                       columnWidth4=(30, 40, 30, 40),
                        adjustableColumn=1,
                        columnAlign=(1, 'right'),
                        columnAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)])
         self.button = cmds.button(l="Scale2Src", c=self.RK_ScaleToSrc)
-        self.button = cmds.button(l="G", c=self.RK_Geometric)
+        # self.button = cmds.button(l="G", c=self.RK_Geometric)
         self.button = cmds.button(l="O", c=self.RK_Organic)
         self.button = cmds.button(l="S", c=self.RK_Straighten)
 
@@ -101,7 +102,7 @@ class LineUpUVs(object):
     def layoutUVsToUDIM(self, *args):
         sels = cmds.ls(sl=1)
         for i, x in enumerate(sels):
-            x = x.getShape()
+            x = cmds.listRelatives(x,s=True)[0]
             cmds.select('{0}.map[:]'.format(x), r=1)
             cmds.polyEditUV(u=i % 10, v=int(math.floor(i / 10)))
         cmds.select(sels, r=1)
@@ -242,22 +243,22 @@ class LineUpUVs(object):
     def RK_Geometric(self, *args):
         if not cmds.pluginInfo("Roadkill", q=1, l=1):
             cmds.loadPlugin("Roadkill")
-        cmds.mel.eval("RoadkillProGeometric")
+        mm.eval("RoadkillProGeometric")
 
     def RK_Organic(self, *args):
         if not cmds.pluginInfo("Roadkill", q=1, l=1):
             cmds.loadPlugin("Roadkill")
-        cmds.mel.eval("RoadkillProOrganic")
+        mm.eval("RoadkillProOrganic")
 
     def RK_Straighten(self, *args):
         if not cmds.pluginInfo("Roadkill", q=1, l=1):
             cmds.loadPlugin("Roadkill")
-        cmds.mel.eval("RoadkillProStraighten")
+        mm.eval("RoadkillProStraighten")
 
     def RK_ScaleToSrc(self, *args):
         if not cmds.pluginInfo("Roadkill", q=1, l=1):
             cmds.loadPlugin("Roadkill")
-        cmds.mel.eval("RoadkillProScaleToSource")
+        mm.eval("RoadkillProScaleToSource")
 
     def selMesh(self, *args):
         getSel = cmds.ls(sl=1, fl=1)
@@ -318,9 +319,9 @@ class LineUpUVs(object):
     def rotateEachShell(self,*args):
         sels = cmds.ls(sl=1)
         for i, x in enumerate(sels):
-            x = x.getShape()
+            x = cmds.listRelatives(x,s=True)[0]
             cmds.select('{0}.map[:]'.format(x), r=1)
-            cmds.mel.eval("polyRotateUVs 180")
+            mm.eval("polyRotateUVs 180")
             cmds.select(sels, r=1)
 
 LineUpUVs()._UI()
