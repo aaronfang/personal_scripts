@@ -1,0 +1,77 @@
+///////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
+///																																											///
+/// Procedure Name	:	selectShellBorderEdges.mel	V1.0																	///
+///																																											///
+/// Updated 				:	24th. Oct. 2006																										///
+///																																											///
+/// Author 					:	T.G.Jay																														///
+///																																											///
+/// All Rights Reserved .																																///
+///																																											///
+///////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////       Mel Starts      //////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
+
+////All the Vars begin with "$TGJ_SSBE_"
+
+global proc selectShellBorderEdges() {
+
+	int $TGJ_SSBE_Selection_Size = size(`ls -sl -fl`);
+	int $TGJ_SSBE_SelectedUV_Size[] = `polyEvaluate -uvComponent`;
+	if ($TGJ_SSBE_Selection_Size!=$TGJ_SSBE_SelectedUV_Size[0]) print ("// Error: Please select UV Point //\n");
+	else 
+	{
+
+		polySelectBorderShell 1;
+		string $TGJ_SSBE_UVBorders[] = `ls -sl -l -fl`;
+		PolySelectConvert 3;
+		PolySelectConvert 20;
+		string $TGJ_SSBE_EdgeInside[] = `ls -sl -l -fl`;
+		select -r $TGJ_SSBE_UVBorders;
+		PolySelectConvert 2;
+		select -tgl $TGJ_SSBE_EdgeInside;
+		select -tgl $TGJ_SSBE_EdgeInside;
+		$TGJ_SSBE_EdgeInside = `ls -sl -l -fl`;
+		
+				
+		string $TGJ_SSBE_EdgeBorders[];
+		int $TGJ_SSBE_EdgeInside_Size = size($TGJ_SSBE_EdgeInside);
+		for ($TGJ_i=0;$TGJ_i<$TGJ_SSBE_EdgeInside_Size;$TGJ_i++) {
+			
+			string $TGJ_SSBE_EachUVInside_Fold[] = `polyListComponentConversion -fe -tuv $TGJ_SSBE_EdgeInside[$TGJ_i]`;
+			string $TGJ_SSBE_EachUVInside[] = `ls -fl $TGJ_SSBE_EachUVInside_Fold`;
+			if (size($TGJ_SSBE_EachUVInside)!=2) {
+	
+				$TGJ_SSBE_EdgeBorders[size($TGJ_SSBE_EdgeBorders)] = $TGJ_SSBE_EdgeInside[$TGJ_i];
+	
+			}
+			
+		}
+	
+		select -r $TGJ_SSBE_EdgeBorders;
+	
+	}
+
+}
+
+//add semi automatic actions.So one click,all down!
+//modifyed by Aaron Fang
+//Oct 30 2006
+global proc execSSBE()
+{
+    polyPerformAction "polySoftEdge -a 180" e 0;
+    PolySelectConvert 4;
+    selectShellBorderEdges;
+    polyPerformAction "polySoftEdge -a 0" e 0;
+    FrameSelected;
+    select -cl  ;
+}
+execSSBE;
+///////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////       Mel Ends       ///////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
