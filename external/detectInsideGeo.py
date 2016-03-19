@@ -62,3 +62,15 @@ def testIntersect():
     elapsedTime = timerX(startTime = start)
     print "time :",elapsedTime
     select(allIn,replace=1)
+
+
+# select faces that facing the camera
+# 1. Select your mesh and switch to component mode of face selection (RMB on the object and select face from the popup).
+# 2. From the menu: Display> polygons> backface culling.
+# 3. Run the following python
+
+import maya.OpenMaya as om
+import maya.OpenMayaUI as omu
+ 
+view = omu.M3dView.active3dView()
+om.MGlobal.selectFromScreen(0, 0, view.portWidth(), view.portHeight(), om.MGlobal.kReplaceList)
