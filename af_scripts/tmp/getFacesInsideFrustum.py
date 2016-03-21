@@ -1,6 +1,6 @@
 import maya.OpenMaya as OM
 import maya.OpenMayaUI as OMU
-from math import fmod
+import math
 import maya.cmds as cmds
 
 
@@ -31,15 +31,15 @@ def cameraFrustum_build(cam_shape):
             frustumGeo = cmds.polyCube(w=2, h=2, d=2, n=prefix + 'camera_frustum_geo')
             cmds.delete(frustumGeo[0], constructionHistory=True)
             cmds.parent(frustumGeo[0], frustumMainGrp)
-            
-        #load plugin "nearestPointOnMesh.mll" if needed and connect 
+
+        #load plugin "nearestPointOnMesh.mll" if needed and connect
             plugin = cmds.pluginInfo('nearestPointOnMesh.mll', q=1, l=1)
             if plugin==0:
                 cmds.loadPlugin('nearestPointOnMesh.mll')
 
-            nearNodeName = prefix + 'npomNode'  
+            nearNodeName = prefix + 'npomNode'
             npomNode = cmds.createNode('nearestPointOnMesh', n=nearNodeName)
-            cmds.connectAttr(frustumGeo[0] + '.worldMesh', npomNode + '.inMesh')        
+            cmds.connectAttr(frustumGeo[0] + '.worldMesh', npomNode + '.inMesh')
 
         #create clusters
             cmds.select(frustumGeo[0] + '.vtx[4:7]', r=1)
@@ -59,10 +59,10 @@ def cameraFrustum_build(cam_shape):
             cmds.parent(nearCluster[1], nearLoc[0])
             cmds.parent(farCluster[1], farLoc[0])
             cmds.parent(nearLoc[0], cameraLoc[0])
-            cmds.parent(farLoc[0], cameraLoc[0]) 
+            cmds.parent(farLoc[0], cameraLoc[0])
         #constrain camera loc to camera
             cmds.parentConstraint(selCamXform, cameraLoc, weight=1)
-        
+
         return frustumGeo[0]
 
 
@@ -80,8 +80,8 @@ def cameraFrustum_scale(cam_shape):
         horizontalFieldOfView = cmds.camera(selCamXform, q=1, hfv=1)
         lensSqueezeRatio = cmds.camera(selCamXform, q=1, lsr=1)
         cameraScale = cmds.camera(selCamXform, q=1, cs=1)
-        nearClipPlane = cmds.getAttr('{0}.nearClipPlane'format(cam_shape))
-        farClipPlane = cmds.getAttr('{0}.farClipPlane'format(cam_shape))
+        nearClipPlane = cmds.getAttr('{0}.nearClipPlane'.format(cam_shape[0]))
+        farClipPlane = cmds.getAttr('{0}.farClipPlane'.format(cam_shape[0]))
 
     #convert degrees to radians if needed
         angleUnits = cmds.currentUnit(q=1, a=1)
@@ -96,7 +96,7 @@ def cameraFrustum_scale(cam_shape):
     #apply camera lens squeeze
         horizontalFieldOfView = horizontalFieldOfView * lensSqueezeRatio;
 
-    #apply camera scale 
+    #apply camera scale
         verticalAngle = verticalAngle * cameraScale;
         horizontalFieldOfView = horizontalFieldOfView * cameraScale;
 
@@ -172,43 +172,59 @@ def pyRayIntersect(mesh, point, direction=(0.0, 1.0, 0.0)):
 
 # get each object in frustum and facing camera at the same time
 def getFacesInFrustum(container,obj):
-    # select faces in container(frustum)
-    allVtx = cmds.ls('{0}.vtx[:]'.format(obj),fl=True)
-    allIn = []
-    for vtx in allVtx:
-      location = cmds.pointPosition(vtx,w=True)
-      test = pyRayIntersect(container,location,(0,1,0))
-      if(test):
-          allIn.append(vtx)
-    inner_faces = cmds.polyListComponentConversion(allIn,fv=True,tf=True)
-    
-    # select faces that facing the camera
-    cmds.select(obj,r=True)
-    cmds.selectMode(co=True)
-    cmds.selectType(pf=True)
-    cmds.setAttr('{0}.backfaceCulling'.format(obj[0]),2)
-    view = OMU.M3dView.active3dView()
-    OM.MGlobal.selectFromScreen(0, 0, view.portWidth(), view.portHeight(), OM.MGlobal.kReplaceList)
-    facing_cam_faces = cmds.ls(sl=True,fl=True)
-    
-    # combine both selection
-    all_faces = [x for x in inner_faces if x in facing_cam_faces]
+obj = 'pHelix131'
+container = 'frust_camera_frustum_geo'
+# select faces in container(frustum)
+allVtx = cmds.ls('{0}.vtx[:]'.format(obj),fl=True)
+allIn = []
+for vtx in allVtx:
+  location = cmds.pointPosition(vtx,w=True)
+  test = pyRayIntersect(container,location,(0,1,0))
+  if(test):
+      allIn.append(vtx)
+inner_faces = cmds.polyListComponentConversion(allIn,fv=True,tf=True)
+
+# select faces that facing the camera
+cmds.select(obj,r=True)
+cmds.selectMode(co=True)
+cmds.selectType(pf=True)
+cmds.setAttr('{0}.backfaceCulling'.format(obj),2)
+view = OMU.M3dView.active3dView()
+OM.MGlobal.selectFromScreen(0, 0, view.portWidth(), view.portHeight(), OM.MGlobal.kReplaceList)
+facing_cam_faces = cmds.ls(sl=True,fl=True)
+
+# combine both selection
+all_faces = [x for x in cmds.ls(inner_faces,fl=True) if x in cmds.ls(facing_cam_faces,fl=True)]
     return all_faces
 
 def getAllFacesInFrustum():
-    start_frame = 1
-    end_frame = 50
-    by_frame = 5
-    cur_frame = cmds.currentTime()
-    
-    sels = cmds.ls(sl=True,fl=True)
-    cam_shape = cmds.ls(sels[-1],dag=True,type='shape')
-    objs = sels[:-1]
-    all_faces = []
-    for frame in range(start_frame,end_frame+1,by_frame):
-        set frame (frame)
-        container = cameraFrustum_build(cam_shape)
-        cameraFrustum_scale(cam_shape)
-        for obj in objs:
-            for face in getFacesInFrustum(container,obj):
-                all_faces.append(face)
+start_frame = 1
+end_frame = 50
+by_frame = 5
+cur_frame = cmds.currentTime(q=True)
+
+sels = cmds.ls(sl=True,fl=True)
+cam = [x for x in sels if cmds.listRelatives(x,s=True)[0] in cmds.ls(type='camera')][0]
+cam_shape = cmds.listRelatives(cam,s=True)
+objs = [x for x in sels if x != cam]
+all = []
+# for frame in range(start_frame,end_frame+1,by_frame):
+#     cmds.currentTime(frame)
+
+container = cameraFrustum_build(cam_shape)
+cameraFrustum_scale(cam_shape)
+
+for obj in objs:
+    face = getFacesInFrustum(container,obj)
+    all.append(face)
+
+cmds.delete(cmds.listRelatives(container,p=True))
+
+
+
+
+
+
+
+
+
