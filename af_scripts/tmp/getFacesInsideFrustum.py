@@ -170,33 +170,45 @@ def pyRayIntersect(mesh, point, direction=(0.0, 1.0, 0.0)):
     return result
 
 
-# test
+# get each object in frustum and facing camera at the same time
+def getFacesInFrustum(container,obj):
+    # select faces in container(frustum)
+    allVtx = cmds.ls('{0}.vtx[:]'.format(obj),fl=True)
+    allIn = []
+    for vtx in allVtx:
+      location = cmds.pointPosition(vtx,w=True)
+      test = pyRayIntersect(container,location,(0,1,0))
+      if(test):
+          allIn.append(vtx)
+    inner_faces = cmds.polyListComponentConversion(allIn,fv=True,tf=True)
+    
+    # select faces that facing the camera
+    cmds.select(obj,r=True)
+    cmds.selectMode(co=True)
+    cmds.selectType(pf=True)
+    cmds.setAttr('{0}.backfaceCulling'.format(obj[0]),2)
+    view = OMU.M3dView.active3dView()
+    OM.MGlobal.selectFromScreen(0, 0, view.portWidth(), view.portHeight(), OM.MGlobal.kReplaceList)
+    facing_cam_faces = cmds.ls(sl=True,fl=True)
+    
+    # combine both selection
+    all_faces = [x for x in inner_faces if x in facing_cam_faces]
+    return all_faces
 
-sels = cmds.ls(sl=True,fl=True)
-cam_shape = cmds.ls(sels[-1],dag=True,type='shape')
-objs = sels[:-1]
-
-container = cameraFrustum_build(cam_shape)
-cameraFrustum_scale(cam_shape)
-checkInsideObj = objs
-
-allVtx = cmds.ls('{0}.vtx[:]'.format(checkInsideObj),fl=True)
-allIn = []
-for vtx in allVtx:
-  location = cmds.pointPosition(vtx,w=True)
-  test = pyRayIntersect(container,location,(0,1,0))
-  if(test):
-      allIn.append(vtx)
-inner_faces = cmds.polyListComponentConversion(allIn,fv=True,tf=True)
-
-# select faces that facing the camera
-obj = cmds.ls(sl=True,fl=True)
-cmds.select(obj,r=True)
-cmds.selectMode(co=True)
-cmds.selectType(pf=True)
-cmds.setAttr('{0}.backfaceCulling'.format(obj[0]),2)
-view = OMU.M3dView.active3dView()
-OM.MGlobal.selectFromScreen(0, 0, view.portWidth(), view.portHeight(), OM.MGlobal.kReplaceList)
-facing_cam_faces = cmds.ls(sl=True,fl=True)
-all_faces = [x for x in inner_faces if x in facing_cam_faces]
-cmds.select(all_faces)
+def getAllFacesInFrustum():
+    start_frame = 1
+    end_frame = 50
+    by_frame = 5
+    cur_frame = cmds.currentTime()
+    
+    sels = cmds.ls(sl=True,fl=True)
+    cam_shape = cmds.ls(sels[-1],dag=True,type='shape')
+    objs = sels[:-1]
+    all_faces = []
+    for frame in range(start_frame,end_frame+1,by_frame):
+        set frame (frame)
+        container = cameraFrustum_build(cam_shape)
+        cameraFrustum_scale(cam_shape)
+        for obj in objs:
+            for face in getFacesInFrustum(container,obj):
+                all_faces.append(face)
