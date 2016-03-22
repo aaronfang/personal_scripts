@@ -51,3 +51,13 @@ class SeparateShape(object):
         
 c = SeparateShape()
 c.doMain()
+
+
+# ---------------------------------------------
+# mel
+string $sel[] = `ls -sl -dag -lf`;
+for ($each in $sel)
+{
+string $group = `group -em -n ($each + "_transform")`;
+parent -r -s $each $group;
+}
