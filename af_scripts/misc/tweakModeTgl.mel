@@ -1,0 +1,19 @@
+// -----------------------------------------------------
+// Set tool to "object" mode with marquee turned on
+// Set tool to "vtx" mode with tweak turned on
+if (`selectMode -q -co`)
+{
+    selectMode -o;
+    setToolTo $gSelect;
+    dR_DoCmd("selectModeDisableTweakMarquee");
+    dR_DoCmd("selectModeMarquee");
+}
+else if (`selectMode -q -o`)
+{
+    selectMode -co;
+    selectType -pv true;
+    setToolTo $gMove;
+    dR_DoCmd("selectModeTweakMarquee");
+    dR_setActiveTransformAxis 3;
+}
+
