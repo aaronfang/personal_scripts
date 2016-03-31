@@ -17,3 +17,11 @@ else if (`selectMode -q -o`)
     dR_setActiveTransformAxis 3;
 }
 
+// -----------------------------------------------------
+dR_setActiveTransformAxis 0;//x
+dR_setActiveTransformAxis 1;//y
+dR_setActiveTransformAxis 2;//z
+dR_setActiveTransformAxis 3;//xyz
+dR_setActiveTransformAxis 4;//xy
+dR_setActiveTransformAxis 5;//yz
+dR_setActiveTransformAxis 6;//xz
