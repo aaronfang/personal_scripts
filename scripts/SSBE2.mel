@@ -1,0 +1,58 @@
+//选择物体，运行以下命令。
+//脚本会根据UV边界，给模型设置软硬边
+global proc hardEdgeFromUVBorders()
+{
+    string $objList[] = `ls -sl -o`;
+    string $uvBorder[];
+    string $edgeUVs[];
+    string $finalBorder[];
+     
+    for ($subObj in $objList) {
+        select -r $subObj;
+        polyNormalPerVertex -ufn true;
+        polySoftEdge -a 180 -ch 1 $subObj;
+        select -r $subObj.map["*"];
+     
+        polySelectBorderShell 1;
+     
+        $uvBorder = `polyListComponentConversion -te -in`;
+        $uvBorder = `ls -fl $uvBorder`;
+     
+        clear( $finalBorder );
+     
+        if (`size $uvBorder` > 2) {
+     
+            for( $curEdge in $uvBorder ) {
+                $edgeUVs = `polyListComponentConversion -tuv $curEdge`;
+                $edgeUVs = `ls -fl $edgeUVs`;
+     
+                if( size( $edgeUVs ) > 2 ) {
+                    $finalBorder[ size( $finalBorder ) ] = $curEdge;
+                    polySoftEdge -a 0 -ch 1 $finalBorder;
+                }
+            }
+        }
+    }
+}hardEdgeFromUVBorders；
+
+//选择物体，运行以下命令。
+//脚本会根据模型软硬边切分UV并Unfold
+global proc cutUVFromHardEdges()
+{
+    string $currentSel[] = `ls -sl`;
+    int $selSize = size($currentSel);
+    for ( $i=0; $i<$selSize; ++$i) {
+        select $currentSel[$i];
+        performPolyProjectionArgList "1" {"0", "Planar", "ls -selection", "0"} "";
+        polySelectConstraint -m 3 -t 0x8000 -sm 1;
+        polySelectConstraint -m 0;
+        polySplitTextureUV;
+        changeSelectMode -object;
+        $uvs = `polyListComponentConversion -tuv`;
+        select $uvs;
+        performUnfold 0;
+        changeSelectMode -object;
+        polyMultiLayoutUV -scale 1 -rotateForBestFit 2 -layout 2;
+        changeSelectMode -object;
+    }
+}cutUVFromHardEdges；
