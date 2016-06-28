@@ -33,22 +33,35 @@ class _cmds(object):
 
 
 def select_inside_loop():
+    
+    ####
+    # Turn on ordering selection
+    if not cmds.selectPref(q=True,trackSelectionOrder=True):
+        cmds.selectPref(trackSelectionOrder=True)
+    #####
+
     # get selected face loop and one inner face, convert to edges
     get_sel = cmds.ls(os=1, fl=1)
-    if _cmds().is_component(get_sel) == "face":
+    if _cmds.is_component(get_sel) == "face":
         mesh = cmds.ls(sl=1, fl=1, o=1)
         edge_from_face = cmds.ls(cmds.polyListComponentConversion(get_sel[:-1], te=1, bo=1), fl=1)
 
+        ######
+        cmds.select(d=True)
+        ######
+
         # create temp uvset for uv projection
         current_uvset = cmds.polyUVSet(mesh, q=1, cuv=1)[0]
-        for uvset in cmds.polyUVSet(mesh, q=1, auv=1):
-            if uvset == "af_tmp_select_uvset":
-                cmds.polyUVSet(mesh, delete=1, uvSet="af_tmp_select_uvset")
-                cmds.polyUVSet(mesh, create=1, uvSet="af_tmp_select_uvset")
-                cmds.polyUVSet(mesh, e=1, cuv=1, uvSet="af_tmp_select_uvset")
-            else:
-                cmds.polyUVSet(mesh, create=1, uvSet="af_tmp_select_uvset")
-                cmds.polyUVSet(mesh, e=1, cuv=1, uvSet="af_tmp_select_uvset")
+        
+        #######
+        if "af_tmp_select_uvset" not in cmds.polyUVSet(mesh, q=1, auv=1):
+            cmds.polyUVSet(mesh, create=1, uvSet="af_tmp_select_uvset")
+            cmds.polyUVSet(mesh, e=1, cuv=1, uvSet="af_tmp_select_uvset")
+        else:
+            cmds.polyUVSet(mesh, delete=1, uvSet="af_tmp_select_uvset")
+            cmds.polyUVSet(mesh, create=1, uvSet="af_tmp_select_uvset")
+            cmds.polyUVSet(mesh, e=1, cuv=1, uvSet="af_tmp_select_uvset")
+        ######       
 
         cmds.polyProjection(mesh, ch=0, type="Planar", ibd=1, md="y")
         cmds.polyMapCut(edge_from_face, e=0)
@@ -62,7 +75,7 @@ def select_inside_loop():
         cmds.polyUVSet(mesh, e=1, cuv=1, uvSet=current_uvset)
         cmds.polyUVSet(mesh, delete=1, uvSet="af_tmp_select_uvset")
         cmds.delete(mesh, ch=1)
-
+        
         # select fill
         cmds.select((inner + get_sel[:-1]), r=1)
 
