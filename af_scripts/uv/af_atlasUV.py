@@ -5,8 +5,9 @@ import maya.cmds as cmds
 meshes = cmds.ls(sl=1, fl=1)
 for mesh in meshes:
     allUVSets = cmds.polyUVSet(mesh,q=1,auv=1)
-    if 'atlasUV' not in allUVSets:
-        cmds.polyUVSet(mesh, copy=True, uvSet='map1', newUVSet='atlasUV')
+    if 'atlasUV' in allUVSets:
+        cmds.polyUVSet(mesh, delete=True, uvSet='atlasUV')
+    cmds.polyUVSet(mesh, copy=True, uvSet='map1', newUVSet='atlasUV')
     cmds.polyUVSet(mesh, currentUVSet=True, uvSet='atlasUV')
 cmds.polyMultiLayoutUV(meshes,uvs="atlasUV",l=2,rbf=1,sc=1,lm=1,fr=1,ps=0.2)
 
